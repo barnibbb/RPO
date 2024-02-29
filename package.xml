@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>rpo</name>
+
+  <version>0.0.0</version>
+  <description>ROS package to compute optimized radiation plans for UV disinfection - RPO - Radiation Plan Optimizer</description>
+
+  <maintainer email="barnabas.bugar-meszaros@sztaki.hu">Barnabas Bugar-Meszaros</maintainer>
+
+  <license>TODO</license>
+
+  <author email="barnabas.bugar-meszaros@sztaki.hu">Barnabas Bugar-Meszaros</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>roscpp</buildtool_depend>
+  <buildtool_depend>octomap</buildtool_depend>
+  <buildtool_depend>octomap_ros</buildtool_depend>
+  <buildtool_depend>octomap_msgs</buildtool_depend>
+  <buildtool_depend>pcl_ros</buildtool_depend>
+  <buildtool_depend>pcl_conversions</buildtool_depend>
+
+</package>
