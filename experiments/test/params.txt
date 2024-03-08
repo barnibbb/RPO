@@ -1,0 +1,55 @@
+Paths
+work folder: ~/catkin_ws/src/RPO/experiments/test/
+augmented model file: models/infirmary_augmented.ot
+color model file: models/infirmary_color.ot
+lamp voxel model file: models/lamp_model.csv
+irradiance maps folder: irradiance_maps/
+short report file: short_reports/report.txt
+long report file: long_reports/report.txt
+
+
+Preprocessing
+depth: 16
+resolution: 0.05
+safety radius: 0.3
+
+
+Lamp attributes
+lamp height: 1.2
+lamp offset: 0.37
+lamp power: 80
+lamp range: 20
+
+
+Computation
+computation type: 7
+exposure limit: 280
+target coverage: 1.0
+grid distance: 10
+load maps: false
+save maps: true
+store maps: true
+semantic: false
+
+
+Plan generation
+start number of positions: 1
+end number of positions: 8
+plan element size: 3
+maximum generations: 10
+population size: 30
+number of crossovers: 15
+number of mutations: 15
+crossover type: 1
+mutation type: 2
+crossover selection type: 1
+mutation selection type: 1
+survival selection type: 4
+mutation probability: 0.5
+space mutation parameter: 0.4
+time mutation parameter: 0.4
+disinfection time: 1800
+increment: 0.00001
+condition: true
+verify: false
+
