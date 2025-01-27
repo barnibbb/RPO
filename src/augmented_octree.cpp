@@ -9,6 +9,7 @@ namespace rpo
     {
         s.read((char*) &value, sizeof(value));
         s.read((char*) &m_normal, sizeof(point3d));
+        s.read((char*) &m_dose, sizeof(double))
         s.read((char*) &m_type, sizeof(int));
 
         return s;
@@ -19,6 +20,7 @@ namespace rpo
     {
         s.write((const char*) &value, sizeof(value));
         s.write((char*) &m_normal, sizeof(point3d));
+        s.write((char*) &m_dose, sizeof(double));
         s.write((char*) &m_type, sizeof(int));
 
         return s;
@@ -135,6 +137,7 @@ namespace rpo
             {
                 node = augmented_octree->updateNode(it.getKey(), true);
                 node->setNormal(point3d(0, 0, 0));
+                node->setDose(0);
                 node->setType(0);
             }
         }
@@ -1162,8 +1165,6 @@ namespace rpo
     {
         ColorOcTree color_model(this->resolution);
 
-        int t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0;
-
         for (AugmentedOcTree::leaf_iterator it = this->begin_leafs(), end = this->end_leafs(); it != end; ++it)
         {
             ColorOcTreeNode* color_node = color_model.updateNode(it.getKey(), true);
@@ -1180,31 +1181,24 @@ namespace rpo
             switch (node->getType())
             {
             case 1: // General
-                // color_node->setColor(255, 0, 0); ++t1;
                 color_node->setColor(GOLD); ++t1;
                 break;
             case 2: // Ground
-                // color_node->setColor(0, 255, 0); ++t2;
                 color_node->setColor(GREEN); ++t2;
                 break;
             case 3: // Underground
-                // color_node->setColor(0, 0, 255); ++t3;
                 color_node->setColor(BLACK); ++t3;
                 break;
             case 4: // Wall
-                // color_node->setColor(255, 255, 0); ++t4;
                 color_node->setColor(CRIMSON_RED); ++t4;
                 break;
             case 5: // Object
-                // color_node->setColor(0, 255, 255); ++t5;
                 color_node->setColor(SAPPHIRE_BLUE); ++t5;
                 break;
             default:
                 break;
             }
         }
-
-        std::cout << t1 << " " << t2 << " " << t3 << " " << t4 << " " << t5 << std::endl;
 
         ros::NodeHandle node_handle;
         ros::Publisher publisher = node_handle.advertise<octomap_msgs::Octomap>("/segmented_map", 10);

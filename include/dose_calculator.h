@@ -61,7 +61,6 @@ namespace rpo
         double computeIrradianceType2(const point3d& lamp_position, const OcTreeKey& key) const;
         double computeIrradianceType3(const point3d& lamp_position, const OcTreeKey& key) const;
         double computeIrradianceType4(const point3d& lamp_position, const OcTreeKey& key, int index = -1);
-        // double computeIrradianceType5(const point3d& lamp_position, const OcTreeKey& key);
         double computeIrradianceIntegral(const point3d& distance, const point3d& normal, double L) const;
         bool compute2DVisibility(const point3d& lamp_position, const point3d& element) const;
         bool compute3DVisibility(const point3d& lamp_position, const point3d& element) const;
@@ -74,20 +73,6 @@ namespace rpo
         inline double getOrigin(const double base, const double direction) const;
 
         bool compute3DVisibility2(const point3d& lamp_position, const point3d& element, int index);
-
-
-        // TODO: check functionality
-        /*
-        void compute2DVisibility2(const point3d& lamp_position, const point3d& element, BP& break_key_vector_1, BP& break_key_vector_2);
-
-        bool compute3DVisibility2(const point3d& lamp_position, const point3d& element) const;
-
-        void computeBreakPoints();
-
-        bool checkBreakPoints(const std::vector<OcTreeKey>& break_keys, const point3d& lamp_floor, 
-            const point3d& point_floor, const OcTreeKey& key, const point3d& direction, 
-            double distance_z, const point3d& point, int index, bool show1 = false);
-        */
 
 
     protected:

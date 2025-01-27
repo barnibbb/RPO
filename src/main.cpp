@@ -81,6 +81,7 @@ int main (int argc, char** argv)
 
     std::chrono::seconds precomp_time;
 
+    // TODO: filter random artifact from K408 model
     // visualizer.filter();
 
 
@@ -108,8 +109,6 @@ int main (int argc, char** argv)
     visualizer.setOptimizationElements();
     visualizer.showOptimizationElements();
 
-
-    // return 0;
 
     // Initialize plan generator ---------------------------------------------------
     rpo::PlanGenerator generator(visualizer.getParameters());

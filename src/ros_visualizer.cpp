@@ -75,7 +75,7 @@ namespace rpo
                 element.z * resolution);
             
             const ColorOcTreeNode::Color color = element.color ? 
-                  ColorOcTreeNode::Color(RUBY_RED2) : // ColorOcTreeNode::Color(255, 0, 255) : 
+                  ColorOcTreeNode::Color(RUBY_RED2) : 
                   ColorOcTreeNode::Color(80, 80, 80);
 
             ColorOcTreeNode* node = m_color_model->search(lamp_point, m_parameters.depth);
@@ -256,10 +256,6 @@ namespace rpo
             }
         }
 
-        // std::string model_file = "/home/barni/rpo_ws/src/rpo/experiments2/1/infirmary/test/model_opt.ot";
-
-        // m_color_model->write(model_file);
-
         publish();
     }
 
@@ -282,21 +278,17 @@ namespace rpo
                     {
                         case 1: // General - orange
                             color_node->setColor(ORANGE);
-                            //color_node->setColor(SNOW_WHITE);
                             break;
                         case 2: // Ground - red
                             color_node->setColor(RUBY_RED2);
-                            //color_node->setColor(SAND);
                             break;
                         case 3: // Underground - black
                             color_node->setColor(BLACK);
                             break;
                         case 4: // Wall - orange
                             color_node->setColor(ORANGE);
-                            //color_node->setColor(SNOW_WHITE);
                             break;
                         case 5: // Object - blue
-                            //color_node->setColor(SAPPHIRE_BLUE);
                             color_node->setColor(SAPPHIRE_BLUE);
                             break;
                         default:
@@ -307,7 +299,6 @@ namespace rpo
                     {
                         // Ground zone - green
                         color_node->setColor(GREEN);
-                        //color_node->setColor(SEAFOAM_GREEN);
                     }   
                 }
                 else
@@ -389,30 +380,6 @@ namespace rpo
             }
         }
 
-
-        // if (grid)
-        // {
-        //     for (const auto& grid_element : m_grid_elements)
-        //     {
-        //         point3d center = m_color_model->keyToCoord(grid_element, m_parameters.depth);
-
-        //         for (int x = -2; x < 3; ++x)
-        //         {
-        //             for (int y = -2; y < 3; ++y)
-        //             {   
-        //                 point3d point = center + point3d(x * m_parameters.resolution, y * m_parameters.resolution, 0);
-
-        //                 ColorOcTreeNode* color_node = m_color_model->search(point);
-
-        //                 // Grid points - purple
-        //                 color_node->setColor(RUBY_RED2);
-        //             }
-        //         }  
-        //     }
-        // }
-
-
-
         publish();
     }
 
@@ -454,26 +421,15 @@ namespace rpo
 
         rpo::ExposureMap exposure_map;
 
-        //for (auto& element : exposure_maps[0])
         for (auto& element : m_verification_elements)
         {
             exposure_map[element] = 0;
 
             for (int i = 0; i < exposure_maps.size(); ++i)
             {
-                // element.second += exposure_maps[i][element.first];
                 exposure_map[element] += exposure_maps[i][element];
             }
 
-            // if (std::isnan(element.second))
-            // {
-            //     element.second = 0;
-            // }
-
-            // if (element.second > m_parameters.exposure_limit)
-            // {
-            //     general_over += 1;
-            // }
 
             if (std::isnan(exposure_map[element]))
             {
@@ -494,9 +450,6 @@ namespace rpo
                 if ((!verify && (m_optimization_elements.find(element) != m_optimization_elements.end())) ||
                     ( verify && (m_verification_elements.find(element) != m_verification_elements.end())))
                 {
-                    // object_sum += 1;
-                    
-                    // if (element.second >= m_parameters.exposure_limit)
                     if (exposure_map[element] >= m_parameters.exposure_limit)
                     {
                         object_over += 1;
@@ -518,7 +471,6 @@ namespace rpo
 
         score.object_coverage  = static_cast<double>(object_over)  / static_cast<double>(object_sum);
 
-        // showCoverage(exposure_maps[0], false);
         showCoverage(exposure_map, false, true);
 
         for (int i = 0; i < elements.size(); i += element_size)

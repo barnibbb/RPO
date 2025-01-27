@@ -1,15 +1,5 @@
 #include "dose_calculator.h"
 
-// IMPORTANTE
-
-// Insert test visibility functions to system code
-// Check whether ray tracing functions fit to augmented model or dose calculator
-// Implement 5th computation function with new visibility
-// Check parts where the 7 computation method is used
-// Modify main.cpp with base reachability
-// Create config files
-// Check calculation time for whole optimization
-
 
 namespace rpo
 {
@@ -169,7 +159,6 @@ namespace rpo
                 if (NodePtr node = m_augmented_model->search(key, depth); node != nullptr)
                 {
                     ground_zone_limited.insert(key);
-                    //m_ground_zone_elements.insert(key);
                 }
             }
         }
@@ -431,12 +420,10 @@ namespace rpo
 
                 if (m_parameters.store_maps)
                 {
-                    // saveIrradianceMap(plan_element_key, m_irradiance_maps[i]);
                     saveBinaryMap(plan_element_key, m_irradiance_maps[i]);
                 }
                 else
                 {
-                    // saveIrradianceMap(plan_element_key, irradiance_map);
                     saveBinaryMap(plan_element_key, irradiance_map);
                 }
             }
@@ -460,7 +447,6 @@ namespace rpo
         {
             for (int i = 0; i < m_grid_elements.size(); ++i)      
             {
-                // ExposureMap irradiance_map = loadIrradianceMap(m_grid_elements[i]);
                 ExposureMap irradiance_map = loadBinaryMap(m_grid_elements[i]);
 
                 for (const auto& element : irradiance_map)
@@ -485,7 +471,6 @@ namespace rpo
             #pragma omp parallel for
             for (int i = 0; i < m_grid_elements.size(); ++i)
             {
-                // m_irradiance_maps[i] = loadIrradianceMap(m_grid_elements[i]);
                 m_irradiance_maps[i] = loadBinaryMap(m_grid_elements[i]);
             }
 
@@ -509,7 +494,6 @@ namespace rpo
         {
             for (int i = 0; i < m_grid_elements.size(); ++i)      
             {
-                // ExposureMap irradiance_map = loadIrradianceMap(m_grid_elements[i]);
                 ExposureMap irradiance_map = loadBinaryMap(m_grid_elements[i]);
 
                 for (const auto& element : irradiance_map)
@@ -708,8 +692,6 @@ namespace rpo
     void DoseCalculator::create2DModel()
     {
         signal (SIGINT, handler);
-
-        // KeySet obstacle_2d;
 
         std::cout << "Original size: " << m_augmented_model->getNumLeafNodes() << std::endl;
 
@@ -992,26 +974,14 @@ namespace rpo
 
         rpo::ExposureMap exposure_map;
 
-        //for (auto& element : exposure_maps[0])
         for (auto& element : m_optimization_elements)
         {
             exposure_map[element] = 0;
 
             for (int i = 0; i < exposure_maps.size(); ++i)
             {
-                // element.second += exposure_maps[i][element.first];
                 exposure_map[element] += exposure_maps[i][element];
             }
-
-            // if (std::isnan(element.second))
-            // {
-            //     element.second = 0;
-            // }
-
-            // if (element.second >= m_parameters.exposure_limit)
-            // {
-            //     general_over += 1;
-            // }
 
 
             if (std::isnan(exposure_map[element]))
@@ -1031,9 +1001,6 @@ namespace rpo
             {
                 if (m_optimization_elements.find(element) != m_optimization_elements.end())
                 {
-                    // object_sum += 1;
-                    
-                    // if (element.second >= m_parameters.exposure_limit)
                     if (exposure_map[element] >= m_parameters.exposure_limit)
                     {
                         object_over += 1;
@@ -1095,7 +1062,6 @@ namespace rpo
             }
             else
             {
-                // dose_map = loadIrradianceMap(m_grid_elements[grid_index]);
                 dose_map = loadBinaryMap(m_grid_elements[grid_index]);
             }
             
@@ -1425,7 +1391,7 @@ namespace rpo
     {
         signal (SIGINT, handler);
 
-        const double resolution = m_parameters.resolution; // + 0.001;
+        const double resolution = m_parameters.resolution;
 
         const int depth = m_parameters.depth;
 
@@ -1477,7 +1443,7 @@ namespace rpo
     {
         signal (SIGINT, handler);
 
-        const double resolution = m_parameters.resolution; // + 0.001;
+        const double resolution = m_parameters.resolution;
 
         const int depth = m_parameters.depth;
 
@@ -1512,7 +1478,6 @@ namespace rpo
         point3d end_point;
 
 
-        //if (m_augmented_model->checkRayCast(false, target, origin, target_direction, end_point, distance, depth, resolution, true))
         if (k_element_3d[0] == k_lamp_3d[0] || !m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
         {
             offset = (direction.y() > 0) ? resolution : -resolution;
@@ -1521,7 +1486,6 @@ namespace rpo
 
             target_direction = target - origin;
 
-            // if (m_augmented_model->checkRayCast(false, target, origin, target_direction, end_point, distance, depth, resolution, true))
             if (k_element_3d[1] == k_lamp_3d[1] || !m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
             {
                 double offset = (direction.z() > 0) ? resolution : -resolution;
@@ -1530,7 +1494,6 @@ namespace rpo
                 
                 point3d target_direction = target - origin;
 
-                // if (m_augmented_model->checkRayCast(true, target, origin, target_direction, end_point, distance, depth, resolution, true))
                 if (k_element_3d[2] != k_lamp_3d[2] && m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
                 {
                     return true;
@@ -1831,538 +1794,5 @@ namespace rpo
         return false;
     }
 }
-
-
-
-
-    /*
-    void DoseCalculator::compute2DVisibility2(const point3d& lamp_position, const point3d& element, BP& break_key_vector_1, BP& break_key_vector_2)
-    {
-        signal (SIGINT, handler);
-
-        const double resolution = m_parameters.resolution + 0.001;
-
-        const int depth = m_parameters.depth;
-
-        const point3d direction = lamp_position - element;
-
-        OcTreeKey target_key, origin_key;  
-
-        m_augmented_model->coordToKeyChecked(lamp_position, depth, target_key);
-        m_augmented_model->coordToKeyChecked(element, depth, origin_key);   
-
-        const double distance = 1.1 * direction.norm();
-
-        double offset = (direction.x() >= 0) ? resolution : -resolution;
-
-        point3d origin = element + point3d(offset, 0, 0);
-
-        point3d target_direction = lamp_position - origin;
-
-        point3d end_point;
-
-        if (m_augmented_model->castRay2(origin, target_direction, lamp_position, end_point, true, distance, depth, resolution, break_key_vector_1.bp1, break_key_vector_2.bp1, false))
-        {
-            if (break_key_vector_1.bp1.size() != 0)
-            {
-                offset = (direction.y() >= 0) ? resolution : -resolution;
-
-                origin = element + point3d(0, offset, 0);
-
-                target_direction = lamp_position - origin;
-
-                if (m_augmented_model->castRay2(origin, target_direction, lamp_position, end_point, true, distance, depth, resolution, break_key_vector_1.bp2, break_key_vector_2.bp2, false))
-                {
-                    if (break_key_vector_1.bp2.size() != 0)
-                    {   
-                        target_direction = lamp_position - element;
-
-                        m_augmented_model->castRay2(element, target_direction, lamp_position, end_point, true, distance, depth, resolution, break_key_vector_1.bp3, break_key_vector_2.bp3, false);
-                    }
-                }
-            }
-        }
-    }
-
-
-
-
-    bool DoseCalculator::compute3DVisibility2(const point3d& lamp_position, const point3d& element) const
-    {
-        signal (SIGINT, handler);
-
-        const double resolution = 0.05; // m_parameters.resolution;
-
-        const int depth = m_parameters.depth;
-
-        point3d target;
-
-        OcTreeKey key;
-
-        if (m_augmented_model->coordToKeyChecked(lamp_position, depth, key))
-        {
-            target = m_augmented_model->keyToCoord(key, depth);
-        }
-
-        const point3d direction = target - element;
-
-        const double distance = 1.1 * direction.norm();
-
-        double offset = (element.x() < lamp_position.x()) ? resolution : -resolution;
-
-        point3d origin = element + point3d(offset, 0, 0);
-
-        point3d target_direction = target - origin;
-
-        point3d end_point;
-
-        if ((m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, key) && m_augmented_model->coordToKey(end_point) == key))
-        {
-            return true;
-        }
-        else
-        {
-            offset = (element.y() < lamp_position.y()) ? resolution : -resolution;
-
-            origin = element + point3d(0, offset, 0);
-
-            target_direction = target - origin;
-
-            if ((m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, key) && m_augmented_model->coordToKey(end_point) == key))
-            {
-                return true;
-            }
-            else
-            {
-                double offset = (element.z() < lamp_position.z()) ? resolution : -resolution;
-
-                point3d origin = element + point3d(0, 0, offset);
-                
-                point3d target_direction = target - origin;
-
-                if (m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, key) && m_augmented_model->coordToKey(end_point) == key)
-                {
-                    return true;
-                }
-            }
-        }          
-
-        return false;
-    }
-
-
-
-
-
-
-
-    void DoseCalculator::computeBreakPoints()
-    {
-        m_break_points_1.resize(m_grid_elements.size());
-        m_break_points_2.resize(m_grid_elements.size());
-        m_break_points_3.resize(m_grid_elements.size());
-
-        // #pragma omp parallel for
-        for (int i = 0; i < m_grid_elements.size(); ++i)
-        {
-            point3d center_floor = m_augmented_model->keyToCoord(m_grid_elements[i], m_parameters.depth);
-
-            center_floor.z() = m_parameters.ground_level - 1;
-
-            for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
-            {
-                point3d point_floor(it.getCoordinate().x(), it.getCoordinate().y(), m_parameters.ground_level - 1);
-
-                OcTreeKey point_key;
-
-                m_augmented_model->coordToKeyChecked(point_floor, m_parameters.depth, point_key);
-
-                if (m_break_points_1[i].find(point_key) == m_break_points_1[i].end())
-                {
-                    BP break_key_vector_1, break_key_vector_2;
-                    
-                    compute2DVisibility2(center_floor, point_floor, break_key_vector_1, break_key_vector_2);
-
-                    m_break_points_1[i][point_key] = break_key_vector_1.bp1;
-                    m_break_points_2[i][point_key] = break_key_vector_1.bp2;
-                    m_break_points_3[i][point_key] = break_key_vector_1.bp3;
-
-                    m_break_points_1n[i][point_key] = break_key_vector_2.bp1;
-                    m_break_points_2n[i][point_key] = break_key_vector_2.bp2;
-                    m_break_points_3n[i][point_key] = break_key_vector_2.bp3;
-                }
-            }
-        }
-    }
-
-
-
-    bool DoseCalculator::checkBreakPoints(const std::vector<OcTreeKey>& break_keys, const point3d& lamp_floor, 
-        const point3d& point_floor, const OcTreeKey& key, const point3d& direction, double distance_z, 
-        const point3d& point, int index, bool show1)
-    {
-        double resolution = m_parameters.resolution + 0.001;
-        int depth = m_parameters.depth;
-
-        point3d direction_normalized = direction.normalized();
-
-        double distance_2d = (lamp_floor - point_floor).norm();
-
-        point3d end;
-
-        std::vector<point3d> break_points(break_keys.size());
-        std::vector<double> break_distances(break_keys.size());
-
-        for (int i = 0; i < break_points.size(); ++i)
-        {
-            break_points[i] = m_augmented_model->keyToCoord(break_keys[i]);
-            break_distances[i] = (break_points[i] - point_floor).norm() / distance_2d;
-        }
-
-
-        for (int i = 0; i < break_keys.size(); i += 2)
-        {
-            point3d p1 = break_points[i];
-            point3d p2 = break_points[i + 1];
-
-            int step_x = std::abs(break_keys[i][0] - key[0]);
-            int step_y = std::abs(break_keys[i][1] - key[1]);
-            double step_z = 0;
-
-            double t_max[3];   
-
-            double t_z = 0.5 * resolution / std::fabs(direction_normalized.z());
-
-            if (step_x == 0 && step_y == 0)
-            {
-                t_max[0] = (direction_normalized.x() == 0) ? std::numeric_limits<double>::max() : (double(step_x) + 0.5) * resolution / std::fabs(direction_normalized.x());
-
-                t_max[1] = (direction_normalized.y() == 0) ? std::numeric_limits<double>::max() : (double(step_y + 0.5)) * resolution / std::fabs(direction_normalized.y());
-            }
-            else if (step_x >= step_y)
-            {
-                // step_x -= 1;
-
-                t_max[0] = (double(step_x) + 0.5) * resolution / std::fabs(direction_normalized.x());
-
-                t_max[1] = (direction_normalized.y() == 0) ? std::numeric_limits<double>::max() : (double(step_y + 0.5)) * resolution / std::fabs(direction_normalized.y());
-            }
-            else
-            {
-                // step_y -= 1;
-
-                t_max[0] = (direction_normalized.x() == 0) ? std::numeric_limits<double>::max() : (double(step_x) + 0.5) * resolution / std::fabs(direction_normalized.x());
-
-                t_max[1] = (double(step_y + 0.5)) * resolution / std::fabs(direction_normalized.y());
-            }
-
-                                
-            if (distance_z == 0)
-            {
-                t_max[2] = std::numeric_limits<double>::max();
-
-                p1.z() = point.z();
-            }
-            else
-            {
-                step_z = std::ceil((std::min<double>(t_max[0], t_max[1]) - t_z) / (resolution / std::fabs(direction_normalized.z())));
-
-                t_max[2] = t_z + step_z * resolution / std::fabs(direction_normalized.z());
-
-                if (distance_z < 0) step_z *= -1;
-
-                p1.z() = point.z() + step_z * resolution;
-            }
-            
-
-            // if (key[0] == 32681 + 43 && key[1] == 32838 - 110 && key[2] == 32764 + 2)
-            // {
-            //     std::cout << step_x << " " << step_y << "\n";
-            //     std::cout << t_max[0] << " " << t_max[1] << "\n";
-            //     std::cout << distance_z << " " << step_z << "\n"; 
-            //     std::cout << p1 << "\n";
-            //     std::cout << p2 << "\n";
-            //     std::cin.get();
-            // }
-
-
-            if (break_keys[i][0] == break_keys[i+1][0] && break_keys[i][1] == break_keys[i+1][1])
-            {
-                NodePtr single_node = m_augmented_model->search(p1, depth);
-
-                if (single_node && m_augmented_model->isNodeOccupied(single_node))
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                bool ok = (key[0] == 32681 + 43 && key[1] == 32838 - 110 && key[2] == 32764 + 2 && index == 3);
-
-                if (!m_augmented_model->castRay3(p1, direction, p2, end, true, 10, depth, resolution, t_max[0], t_max[1], t_max[2], ok))
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-    
-}*/
-
-
-
-
-
-
-
-
-
-// Cropped from computeIrradianceType5
-
-// int step_x_2 = (break_keys_1.size() > j + 2) ? std::abs(break_keys_1[j + 2][0] - break_keys_1[j + 1][0]) :
-//     std::abs(lamp_key[0] - break_keys_1[j + 1][0]);
-
-// int step_y_2 = (break_keys_1.size() > j + 2) ? std::abs(break_keys_1[j + 2][1] - break_keys_1[j + 1][1]) :
-//     std::abs(lamp_key[1] - break_keys_1[j + 1][1]);
-
-/*
-int step_x_2 = std::abs(break_keys_1[j + 1][0] - key[0]);
-int step_y_2 = std::abs(break_keys_1[j + 1][1] - key[1]);
-
-double t_max_x = (double(step_x_2) + 0.5) * m_parameters.resolution / std::fabs(direction_normalized.x());
-double t_max_y = (double(step_y_2) + 0.5) * m_parameters.resolution / std::fabs(direction_normalized.y());
-
-double t_max_z = 0.5 * m_parameters.resolution / std::fabs(direction_normalized.z());
-
-
-if (t_max_y <= t_max_x)
-{    
-    double step_z = std::ceil((t_max_y - t_max_z) / (m_parameters.resolution / std::fabs(direction_normalized.z())));
-
-    p2.z() = point.z() + step_z * m_parameters.resolution;
-}
-else
-{
-    double step_z = std::ceil((t_max_x - t_max_z) / (m_parameters.resolution / std::fabs(direction_normalized.z())));
-
-    p2.z() = point.z() + step_z * m_parameters.resolution;
-}
-*/
-
-/*                    
-for (int j = 0; j < break_points_1.size(); j += 2)
-{
-    point3d p1 = break_points_1[j];
-    point3d p2 = break_points_1[j + 1];
-
-    double z1 = point.z() + break_distances_1[j]     * (distance_z + double(i) * 0.05);
-    double z2 = point.z() + break_distances_1[j + 1] * (distance_z + double(i) * 0.05);
-
-    // Instead of key and coordinate conversions
-    p1.z() = (std::floor(std::abs(z1) / 0.05) * 0.05 + 0.025) * z1 / std::abs(z1);
-    p2.z() = (std::floor(std::abs(z2) / 0.05) * 0.05 + 0.025) * z2 / std::abs(z2);
-
-    if (p1.x() == p2.x() && p1.y() == p2.y())
-    {
-        NodePtr single_node_1 = m_augmented_model->search(p1, m_parameters.depth);
-
-        if (single_node_1 && m_augmented_model->isNodeOccupied(single_node_1))
-        {
-            break;
-        }
-        else
-        {
-            const point3d difference = point - center;
-
-            const double integral = computeIrradianceIntegral(difference, normal, L);
-
-            irradiance += coefficient * integral;
-
-            continue;
-        }
-    } 
-
-    if (m_augmented_model->checkRayCast(true, p2, p1, p2 - p1, end, 1.1 * (p2 - p1).norm(), m_parameters.depth, m_parameters.resolution, true))
-    {
-        const point3d difference = point - center;
-
-        const double integral = computeIrradianceIntegral(difference, normal, L);
-
-        irradiance += coefficient * integral;
-    }
-    else
-    {
-
-        for (int k = 0; k < break_points_2.size(); k += 2)
-        {
-            point3d p3 = break_points_2[k];
-            point3d p4 = break_points_2[k + 1];
-
-            double z3 = point.z() + break_distances_2[k]     * (distance_z + double(i) * 0.05);
-            double z4 = point.z() + break_distances_2[k + 1] * (distance_z + double(i) * 0.05);
-
-            // Instead of key and coordinate conversions
-            p3.z() = (std::floor(std::abs(z3) / 0.05) * 0.05 + 0.025) * z3 / std::abs(z3);
-            p4.z() = (std::floor(std::abs(z4) / 0.05) * 0.05 + 0.025) * z4 / std::abs(z4);
-
-            if (p3.x() == p4.x() && p3.y() == p4.y())
-            {
-                NodePtr single_node_2 = m_augmented_model->search(p3, m_parameters.depth);
-
-                if (single_node_2 && m_augmented_model->isNodeOccupied(single_node_2))
-                {
-                    break;                                            
-                }
-                else
-                {
-                    const point3d difference = point - center;
-
-                    const double integral = computeIrradianceIntegral(difference, normal, L);
-
-                    irradiance += coefficient * integral;
-
-                    continue;
-                }
-            } 
-
-            if (m_augmented_model->checkRayCast(true, p4, p3, p4 - p3, end, 1.1 * (p4 - p3).norm(), m_parameters.depth, m_parameters.resolution, true))
-            {
-                const point3d difference = point - center;
-
-                const double integral = computeIrradianceIntegral(difference, normal, L);
-
-                irradiance += coefficient * integral;
-            }
-            else
-            {
-                break;
-            }
-        }
-        
-
-        break;
-    }
-}
-*/
-
-
-/*
-for (int k = 0; k < break_keys_2.size(); k += 2)
-{
-    point3d p3 = break_points_2[k];
-    point3d p4 = break_points_2[k + 1];
-
-    if (p3.x() == p4.x() && p3.y() == p4.y())
-    {
-        NodePtr single_node_2 = m_augmented_model->search(p3, depth);
-
-        if (single_node_2 && m_augmented_model->isNodeOccupied(single_node_2))
-        {
-            break;                                            
-        }
-        else
-        {
-            const point3d difference = point - center;
-
-            const double integral = computeIrradianceIntegral(difference, normal, L);
-
-            irradiance += coefficient * integral;
-
-            continue;
-        }
-    } 
-
-    int step_x_2 = std::abs(break_keys_2[k][0] - key[0]);
-    int step_y_2 = std::abs(break_keys_2[k][1] - key[1]);
-
-    double step_z_2;
-
-    double t_max_2[3];
-
-    double t_z_2 = 0.5 * resolution / std::fabs(direction_normalized.z());
-
-    if (step_x_2 >= step_y_2)
-    {
-        step_x_2 -= 1;
-
-        t_max_2[0] = (double(step_x_2) + 0.5) * resolution / std::fabs(direction_normalized.x());
-
-        t_max_2[1] = (step_y_2 == 0) ? std::numeric_limits<double>::max() : (double(step_y_2 + 0.5)) * resolution / std::fabs(direction_normalized.y());
-    }
-    else
-    {
-        step_y_2 -= 1;
-
-        t_max_2[0] = (step_x_2 == 0) ? std::numeric_limits<double>::max() : (double(step_x_2) + 0.5) * resolution / std::fabs(direction_normalized.x());
-
-        t_max_2[1] = (double(step_y_2 + 0.5)) * resolution / std::fabs(direction_normalized.y());
-    }
-
-
-
-
-    // t_max_2[0] = (direction_normalized.x() == 0) ? std::numeric_limits<double>::max() :
-    //     (double(step_x_2) + 0.5) * m_parameters.resolution / std::fabs(direction_normalized.x());
-
-    // t_max_2[1] = (direction_normalized.y() == 0) ? std::numeric_limits<double>::max() :
-    //     (double(step_y_2) + 0.5) * m_parameters.resolution / std::fabs(direction_normalized.y());
-
-
-
-    if (distance_z == 0)
-    {
-        t_max_2[2] = std::numeric_limits<double>::max();
-
-        p3.z() = point.z();
-    }
-    else
-    {
-        step_z_2 = std::ceil((std::min<double>(t_max_2[0], t_max_2[1]) - t_z_2) / (resolution / std::fabs(direction_normalized.z())));
-
-        // if (step_x_2 >= step_y_2 || t_max_2[1] == std::numeric_limits<double>::max())
-        // {
-        //     step_z_2 = std::ceil((t_max_2[0] - t_z_2) / (m_parameters.resolution / std::fabs(direction_normalized.z())));
-        // }
-        // else if (step_x_2 < step_y_2 || t_max_2[0] == std::numeric_limits<double>::max())
-        // {
-        //     step_z_2 = std::ceil((t_max_2[1] - t_z_2) / (m_parameters.resolution / std::fabs(direction_normalized.z())));
-        // }
-
-        t_max_2[2] = t_z_2 + step_z_2 * resolution / std::fabs(direction_normalized.z());
-
-        p3.z() = point.z() + step_z_2 * resolution;
-    }
-
-
-    if (m_augmented_model->castRay3(p3, center - point, p4, end, true, 10, depth, resolution, t_max_2))
-    {
-        const point3d difference = point - center;
-
-        const double integral = computeIrradianceIntegral(difference, normal, L);
-
-        irradiance += coefficient * integral;
-    }
-    else
-    {
-        break;
-    }
-}
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
