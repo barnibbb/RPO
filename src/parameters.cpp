@@ -60,6 +60,7 @@ namespace rpo
             increment                 = std::stod(getValue("increment"));
             verify    = getValue("verify")    == "true";
             condition = getValue("condition") == "true";
+            filter    = getValue("filter")    == "true";
 
             number_of_positions = start_number_of_positions;
             individual_size = number_of_positions * plan_element_size;

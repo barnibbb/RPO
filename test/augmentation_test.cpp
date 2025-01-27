@@ -2,11 +2,11 @@
 
 int main (int argc, char** argv)
 {
-    const std::string color_model_file = "/home/barni/rpo_ws/src/rpo/models/base/office_color.ot";
-    const std::string augmented_model_file = "/home/barni/rpo_ws/src/rpo/models/augmented/office_augmented_full.ot";
+    const std::string color_model_file = "/home/barni/rpo_ws/src/rpo/experiments/models_figs/models/base/cafe_color.ot";
+    const std::string augmented_model_file = "/home/barni/rpo_ws/src/rpo/experiments/models_figs/models/augmented/cafe_augmented_surface_2.ot";
 
-    bool surface = false;
-    bool visualize = false;
+    bool surface = true;
+    bool visualize = true;
 
     std::ifstream file_1(color_model_file);
 

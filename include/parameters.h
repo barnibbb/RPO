@@ -71,6 +71,6 @@ namespace rpo
         double increment = 0.00001;
         bool condition = true;
         bool verify = false;
-
+        bool filter = true;
     };
 }

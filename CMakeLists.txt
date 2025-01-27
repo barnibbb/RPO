@@ -3,7 +3,9 @@ project(rpo)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE "Release")
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
 
 set (octomap_DIR "/opt/ros/melodic/share/octomap/")
 
@@ -107,3 +109,62 @@ add_executable(GZ
 target_link_libraries(GZ
   ${catkin_LIBRARIES}
 )
+
+
+add_executable(RTT
+  test/ray_tracing_test.cpp
+  src/augmented_octree.cpp
+  src/parameters.cpp
+)
+
+target_link_libraries(RTT
+  ${catkin_LIBRARIES}
+)
+
+add_executable(BST
+  test/binary_save.cpp
+  src/augmented_octree.cpp
+  src/parameters.cpp
+)
+
+target_link_libraries(BST
+  ${catkin_LIBRARIES}
+)
+
+
+add_executable(CM
+  src/augmented_octree.cpp
+  test/compare_models.cpp
+)
+
+target_link_libraries(CM
+  ${catkin_LIBRARIES}
+)
+
+add_executable(RT3
+  src/augmented_octree.cpp
+  test/ray_tracing_3d.cpp
+)
+
+target_link_libraries(RT3
+  ${catkin_LIBRARIES}
+)
+
+
+add_executable(PLY2OCTOMAP
+  test/ply2octomap.cpp
+  src/augmented_octree.cpp
+)
+
+target_link_libraries(PLY2OCTOMAP
+  ${catkin_LIBRARIES}
+)
+
+add_executable(H2C
+  test/height_color.cpp
+)
+
+target_link_libraries(H2C
+  ${catkin_LIBRARIES}
+)
+

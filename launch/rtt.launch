@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="rpo" pkg="rpo" type="RTT" output="screen"/>
+</launch>

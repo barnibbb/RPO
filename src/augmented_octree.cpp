@@ -2,6 +2,7 @@
 
 using namespace octomap;
 
+
 namespace rpo
 {
     std::istream& AugmentedOcTreeNode::readData(std::istream &s)
@@ -235,6 +236,8 @@ namespace rpo
 
         if (step[0] == 0 && step[1] == 0 && step[2] == 0)
         {
+            std::cout << origin << " " << target << "\n"; std::cin.get();
+
             std::cout << "Raycasting in direction (0,0,0) is not possible!" << std::endl;
             return false;
         }
@@ -260,7 +263,7 @@ namespace rpo
 
             if ((step[dim] < 0 && current_key[dim] == 0) || (step[dim] > 0 && current_key[dim] == 2 * this->tree_max_val - 1))    
             {
-                std::cout << "Coordinate hit bounds in dim" << dim << ", aborting raycast" << std::endl;
+                // std::cout << "Coordinate hit bounds in dim" << dim << ", aborting raycast" << std::endl;
                 end = this->keyToCoord(current_key, depth);
                 return false; 
             }
@@ -313,6 +316,646 @@ namespace rpo
     }
 
 
+    // Computes ray and collects the keys of break points
+    bool AugmentedOcTree::castRay2(const point3d& origin, const point3d& direction, const point3d& target, point3d& end, 
+        bool ignore_unknown, double max_range, int depth, double resolution, std::vector<OcTreeKey>& break_keys1, std::vector<OcTreeKey>& break_keys2, bool skip) const
+    {
+        // Initialization phase -------------------------------------------------------
+
+        OcTreeKey target_key = this->coordToKey(target, depth);
+
+        OcTreeKey current_key;
+
+        if (!this->coordToKeyChecked(origin, depth, current_key))
+        {
+            std::cout << "Coordinates out of bounds during ray casting" << std::endl;
+            return false;
+        }
+
+        NodePtr starting_node = this->search(current_key, depth);
+
+        bool free = true;
+
+        if (starting_node)
+        {
+            if (this->isNodeOccupied(starting_node))
+            {
+                end = this->keyToCoord(current_key, depth);
+
+                break_keys1.push_back(current_key);
+                break_keys2.push_back(current_key);
+                free = false;
+        }
+        } 
+        else if (!ignore_unknown)
+        {
+            end = this->keyToCoord(current_key, depth);
+            return false;
+        }
+
+        if (break_keys1.size() == 0 && skip) break_keys1.push_back(current_key);
+
+        point3d normalized_direction = direction.normalized();
+
+        bool max_range_set = (max_range > 0.0);
+
+        int step[3];
+        double t_max[3];
+        double t_delta[3];
+
+        for (unsigned int i = 0; i < 3; ++i)
+        {
+            if (normalized_direction(i) > 0.0)
+            {
+                step[i] = 1;
+            }
+            else if (normalized_direction(i) < 0.0)
+            {
+                step[i] = -1;
+            }
+            else
+            {
+                step[i] = 0;
+            }
+
+            if (step[i] != 0)
+            {
+                double voxel_border = this->keyToCoord(current_key[i], depth);
+                voxel_border += static_cast<double>(step[i] * resolution * 0.5);
+
+                t_max[i] = (voxel_border - origin(i)) / normalized_direction(i);
+                t_delta[i] = resolution / std::fabs(normalized_direction(i));
+            }
+            else
+            {
+                t_max[i] = std::numeric_limits<double>::max();
+                t_delta[i] = std::numeric_limits<double>::max();
+            }
+        }
+
+        if (step[0] == 0 && step[1] == 0 && step[2] == 0)
+        {
+            // std::cout << "Raycasting in direction (0,0,0) is not possible!" << std::endl;
+            return false;
+        }
+
+        double max_range_sq = max_range * max_range;
+
+        // Incremental phase  ---------------------------------------------------------
+
+        bool done = false;
+
+        OcTreeKey previous_key;
+
+        while (!done)
+        {
+            unsigned int dim;
+
+            if (t_max[0] + PRECISION < t_max[1])
+            {
+                dim = (t_max[0] + PRECISION < t_max[2]) ? 0 : 2;
+            }
+            else
+            {
+                dim = (t_max[1] + PRECISION < t_max[2]) ? 1 : 2;
+            }
+
+            if ((step[dim] < 0 && current_key[dim] == 0) || (step[dim] > 0 && current_key[dim] == 2 * this->tree_max_val - 1))    
+            {
+                std::cout << "Coordinate hit bounds in dim" << dim << ", aborting raycast" << std::endl;
+                end = this->keyToCoord(current_key, depth);
+                return false; 
+            }
+
+            previous_key = current_key;
+
+            current_key[dim] += step[dim];
+            t_max[dim] += t_delta[dim];
+
+            end = this->keyToCoord(current_key, depth);
+
+            if (max_range_set)
+            {
+                double distance_from_origin_sq = 0.0;
+
+                for (unsigned int j = 0; j < 3; ++j)
+                { 
+                    distance_from_origin_sq += ((end(j) - origin(j)) * (end(j) - origin(j)));
+                }
+
+                if (distance_from_origin_sq > max_range_sq)
+                {
+                    std::cout << "Max range reached\n";
+                    
+                    return false;
+                }
+            }
+
+            NodePtr current_node = this->search(current_key, depth);
+
+            if (target_key == current_key)
+            {
+                done = true;
+                break;
+            }
+
+            if (skip)
+            {
+                break_keys1.push_back(current_key);
+                continue;
+            }
+
+            if (free && current_node && this->isNodeOccupied(current_node))
+            {
+                break_keys1.push_back(current_key);
+                break_keys2.push_back(previous_key); 
+                free = false;
+            }
+            else if (!free && (!current_node || (current_node && !this->isNodeOccupied(current_node))))
+            {
+                break_keys1.push_back(previous_key);
+                break_keys2.push_back(current_key); 
+                free = true;
+            }
+        }
+
+        return true;
+    }
+
+
+
+
+    bool AugmentedOcTree::castRay3(const point3d& origin, const point3d& direction, const point3d& target, point3d& end,
+        bool ignore_unknown, double max_range, int depth, double resolution, double t0, double t1, double t2, bool show) const
+    {
+        // Initialization phase -------------------------------------------------------
+
+        OcTreeKey target_key, origin_key;
+    
+        this->coordToKeyChecked(target, depth, target_key);
+        this->coordToKeyChecked(origin, depth, origin_key);
+
+        OcTreeKey current_key;
+
+        if (!this->coordToKeyChecked(origin, depth, current_key))
+        {
+            std::cout << "Coordinates out of bounds during ray casting" << std::endl;
+
+            std::cout << origin << std::endl;
+
+            return false;
+        }
+
+
+        NodePtr starting_node = this->search(current_key, depth);
+
+        if (starting_node)
+        {
+            if (this->isNodeOccupied(starting_node))
+            {
+                end = this->keyToCoord(current_key, depth);
+
+                return false;
+            }
+        } 
+        else if (!ignore_unknown)
+        {
+            end = this->keyToCoord(current_key, depth);
+            return false;
+        }
+
+        point3d normalized_direction = direction.normalized();
+
+        bool max_range_set = (max_range > 0.0);
+
+        int step[3];
+        double t_delta[3];
+        double t_max[3];
+
+        t_max[0] = t0;
+        t_max[1] = t1;
+        t_max[2] = t2;
+
+        for (unsigned int i = 0; i < 3; ++i)
+        {
+            if (normalized_direction(i) > 0.0)
+            {
+                step[i] = 1;
+            }
+            else if (normalized_direction(i) < 0.0)
+            {
+                step[i] = -1;
+            }
+            else
+            {
+                step[i] = 0;
+            }
+
+            if (step[i] != 0)
+            {
+                double voxel_border = this->keyToCoord(current_key[i], depth);
+                voxel_border += static_cast<double>(step[i] * resolution * 0.5);
+
+                t_delta[i] = resolution / std::fabs(normalized_direction(i));
+            }
+            else
+            {
+                t_delta[i] = std::numeric_limits<double>::max();
+            }
+        }
+
+        if (step[0] == 0 && step[1] == 0 && step[2] == 0)
+        {
+            // std::cout << "Raycasting in direction (0,0,0) is not possible!" << std::endl;
+            return false;
+        }
+
+        double max_range_sq = max_range * max_range;
+
+        // Incremental phase  ---------------------------------------------------------
+
+        bool done = false;
+
+        OcTreeKey previous_key;
+
+        if (show) std::cout << std::setprecision(12) << this->keyToCoord(current_key).x() << " " << this->keyToCoord(current_key).y() 
+                << " " << this->keyToCoord(current_key).z() << " " << t_max[0] << " " << t_max[1] << " " << t_max[2] << "\n";
+
+        while (!done)
+        {
+            unsigned int dim;
+
+            if (t_max[0] + PRECISION < t_max[1])
+            {
+                dim = (t_max[0] + PRECISION < t_max[2]) ? 0 : 2;
+            }
+            else
+            {
+                dim = (t_max[1] + PRECISION < t_max[2]) ? 1 : 2;
+            }
+
+            if ((step[dim] < 0 && current_key[dim] == 0) || (step[dim] > 0 && current_key[dim] == 2 * this->tree_max_val - 1))    
+            {
+                std::cout << "Coordinate hit bounds in dim" << dim << ", aborting raycast" << std::endl;
+                end = this->keyToCoord(current_key, depth);
+                return false; 
+            }
+
+            previous_key = current_key;
+
+            current_key[dim] += step[dim];
+            t_max[dim] += t_delta[dim];
+            
+            end = this->keyToCoord(current_key, depth);
+
+            if (show) std::cout << std::setprecision(12) << this->keyToCoord(current_key).x() << " " << this->keyToCoord(current_key).y() 
+                << " " << this->keyToCoord(current_key).z() << " " << t_max[0] << " " << t_max[1] << " " << t_max[2] << "\n";        
+
+            if (max_range_set)
+            {
+                double distance_from_origin_sq = 0.0;
+
+                for (unsigned int j = 0; j < 3; ++j)
+                { 
+                    distance_from_origin_sq += ((end(j) - origin(j)) * (end(j) - origin(j)));
+                }
+
+                if (distance_from_origin_sq > max_range_sq)
+                {
+                    return false;
+                }
+            }
+
+            NodePtr current_node = this->search(current_key, depth);
+
+            if (current_node)
+            {
+                if (this->isNodeOccupied(current_node))
+                {
+                    return false;
+                }
+            }
+
+            if (current_key[0] == target_key[0] && current_key[1] == target_key[1] && t_max[2] > std::min(t_max[0], t_max[1]) + PRECISION) break;
+        }
+
+        return true;
+    }   
+
+
+
+    bool AugmentedOcTree::castRay4(const point3d& origin, const point3d& directionP, point3d& end, bool ignoreUnknown, double maxRange, OcTreeKey target, bool show) const
+    {
+        /// ----------  see OcTreeBase::computeRayKeys  -----------
+
+        // Initialization phase -------------------------------------------------------
+        OcTreeKey current_key;
+        if ( !this->coordToKeyChecked(origin, current_key) )
+        {
+            OCTOMAP_WARNING_STR("Coordinates out of bounds during ray casting");
+            return false;
+        }
+
+        if (current_key == target)
+        {
+            return true;
+        }
+
+        NodePtr starting_node = this->search(current_key);
+
+        if (starting_node)
+        {
+            if (this->isNodeOccupied(starting_node))
+            {
+                end = this->keyToCoord(current_key);
+                return false;
+            }
+        } 
+        else if(!ignoreUnknown)
+        {
+            end = this->keyToCoord(current_key);
+            return false;
+        }
+
+        point3d direction = directionP.normalized();
+        bool max_range_set = (maxRange > 0.0);
+
+        int step[3];
+        double tMax[3];
+        double tDelta[3];
+
+        for(unsigned int i = 0; i < 3; ++i) 
+        {
+            // compute step direction
+            if (direction(i) > 0.0) step[i] = 1;
+            else if (direction(i) < 0.0)   step[i] = -1;
+            else step[i] = 0;
+
+            // compute tMax, tDelta
+            if (step[i] != 0) 
+            {
+                // corner point of voxel (in direction of ray)
+                double voxelBorder = this->keyToCoord(current_key[i]);
+                voxelBorder += double(step[i] * this->resolution * 0.5);
+
+                tMax[i] = ( voxelBorder - origin(i) ) / direction(i);
+                tDelta[i] = this->resolution / fabs( direction(i) );
+            }
+            else 
+            {
+                tMax[i] =  std::numeric_limits<double>::max();
+                tDelta[i] = std::numeric_limits<double>::max();
+            }
+        }
+
+        if (step[0] == 0 && step[1] == 0 && step[2] == 0)
+        {
+            // OCTOMAP_ERROR("Raycasting in direction (0,0,0) is not possible!");
+            return false;
+        }
+
+        // for speedup:
+        double maxrange_sq = maxRange *maxRange;
+
+        // Incremental phase  ---------------------------------------------------------
+
+        bool done = false;
+
+        if (show) std::cout << tMax[0] << " " << tMax[1] << " " << tMax[2] << " " << 
+            this->keyToCoord(current_key[0]) <<  " " << this->keyToCoord(current_key[1]) << " " << this->keyToCoord(current_key[2]) << "\n";
+
+        while (!done) 
+        {
+            unsigned int dim;
+
+            // find minimum tMax:
+            if (tMax[0] + PRECISION < tMax[1])
+            {
+                if (tMax[0] + PRECISION < tMax[2]) dim = 0;
+                else                   dim = 2;
+            }
+            else 
+            {
+                if (tMax[1] + PRECISION < tMax[2]) dim = 1;
+                else                   dim = 2;
+            }
+
+            // check for overflow:
+            if ((step[dim] < 0 && current_key[dim] == 0) || (step[dim] > 0 && current_key[dim] == 2* this->tree_max_val-1))
+            {
+                OCTOMAP_WARNING("Coordinate hit bounds in dim %d, aborting raycast\n", dim);
+                // return border point nevertheless:
+                end = this->keyToCoord(current_key);
+                return false;
+            }
+
+            // advance in direction "dim"
+            current_key[dim] += step[dim];
+            tMax[dim] += tDelta[dim];
+
+            if (show) std::cout << tMax[0] << " " << tMax[1] << " " << tMax[2] << " " << 
+                this->keyToCoord(current_key[0]) <<  " " << this->keyToCoord(current_key[1]) << " " << this->keyToCoord(current_key[2]) << "\n";
+
+            // generate world coords from key
+            end = this->keyToCoord(current_key);
+
+            // check for maxrange:
+            if (max_range_set)
+            {
+                double dist_from_origin_sq(0.0);
+                for (unsigned int j = 0; j < 3; j++) 
+                {
+                    dist_from_origin_sq += ((end(j) - origin(j)) * (end(j) - origin(j)));
+                }
+
+                if (dist_from_origin_sq > maxrange_sq) return false;
+            }
+
+            if (current_key == target) 
+            {
+                return true;
+            }
+
+            NodePtr current_node = this->search(current_key);
+
+            if (current_node)
+            {
+                if (this->isNodeOccupied(current_node)) 
+                {
+                    done = true;
+                    break;
+                }
+                // otherwise: node is free and valid, raycasting continues
+            } 
+            else if (!ignoreUnknown)
+            { // no node found, this usually means we are in "unknown" areas
+                return false;
+            }
+        } // end while
+
+        return false;
+    }
+
+
+
+    bool AugmentedOcTree::checkBreakPoints(const std::vector<OcTreeKey>& break_keys, const std::vector<OcTreeKey>& break_keys_n, 
+        const point3d& p_target_3d, const point3d& p_origin_3d, const double floor_plan_level, bool show)
+    {
+        const double resolution = this->getResolution();
+        const int depth = this->getTreeDepth();
+
+        OcTreeKey k_target_3d = this->coordToKey(p_target_3d, depth);
+        OcTreeKey k_origin_3d = this->coordToKey(p_origin_3d, depth);
+
+        point3d p_target_2d = point3d(p_target_3d.x(), p_target_3d.y(), floor_plan_level);
+        point3d p_origin_2d = point3d(p_origin_3d.x(), p_origin_3d.y(), floor_plan_level);
+
+        double distance_2d = (p_target_2d - p_origin_2d).norm();
+
+        point3d direction_3d = p_target_3d - p_origin_3d;
+        point3d direction_3d_normalized = direction_3d.normalized();
+
+        std::vector<point3d> break_points(break_keys.size());
+        std::vector<double> break_distances(break_keys.size());
+
+        for (int i = 0; i < break_points.size(); ++i)
+        {
+            break_points[i] = this->keyToCoord(break_keys[i], depth);
+            break_distances[i] = (break_points[i] - p_origin_2d).norm() / distance_2d;
+        }
+
+        for (int i = 0; i < break_keys.size(); i += 2)
+        {
+            point3d p_break_3d_1 = break_points[i];
+            point3d p_break_3d_2 = break_points[i + 1];
+
+            int step_x = std::abs(break_keys[i][0] - k_origin_3d[0]);
+            int step_y = std::abs(break_keys[i][1] - k_origin_3d[1]);
+
+            double step_z = 0;
+
+            double t_max[3];
+
+            t_max[0] = std::numeric_limits<double>::max();
+            t_max[1] = std::numeric_limits<double>::max();
+            t_max[2] = std::numeric_limits<double>::max();
+
+            double t_z = 0.5 * resolution / std::fabs(direction_3d_normalized.z());
+
+
+            if (step_x == 0 && step_y == 0)
+            {
+                t_max[0] = (direction_3d_normalized.x() == 0) ? std::numeric_limits<double>::max() : (double(step_x) + 0.5) * resolution / std::fabs(direction_3d_normalized.x());
+
+                t_max[1] = (direction_3d_normalized.y() == 0) ? std::numeric_limits<double>::max() : (double(step_y) + 0.5) * resolution / std::fabs(direction_3d_normalized.y());            
+            }
+            else if (break_keys[i][0] != break_keys_n[i][0])
+            {
+                t_max[0] = (double(step_x - 1) + 0.5) * resolution / std::fabs(direction_3d_normalized.x());
+
+                t_max[1] = (direction_3d_normalized.y() == 0) ? std::numeric_limits<double>::max() : (double(step_y) + 0.5) * resolution / std::fabs(direction_3d_normalized.y());
+            }
+            else if (break_keys[i][1] != break_keys_n[i][1])
+            {
+                t_max[0] = (direction_3d_normalized.x() == 0) ? std::numeric_limits<double>::max() : (double(step_x) + 0.5) * resolution / std::fabs(direction_3d_normalized.x());
+
+                t_max[1] = (double(step_y - 1) + 0.5) * resolution / std::fabs(direction_3d_normalized.y());
+            }
+
+
+            if (k_target_3d[2] == k_origin_3d[2])
+            {
+                t_max[2] = std::numeric_limits<double>::max();
+
+                p_break_3d_1.z() = p_origin_3d.z();
+            }
+            else
+            {
+                if (step_x == 0 && step_y == 0)
+                {
+                    step_z = 0;
+                }
+                else
+                {
+                    step_z = std::ceil((std::min<double>(t_max[0], t_max[1]) - t_z + rpo::PRECISION) / (resolution / std::fabs(direction_3d_normalized.z())));
+                }
+
+                t_max[2] = t_z + step_z * resolution / std::fabs(direction_3d_normalized.z());
+
+                if (k_target_3d[2] < k_origin_3d[2]) step_z *= -1;
+
+                p_break_3d_1.z() = p_origin_3d.z() + step_z * resolution;
+            }
+
+
+            if (!(step_x == 0 && step_y == 0))
+            {
+                if (break_keys[i][0] != break_keys_n[i][0])
+                {
+                    t_max[0] += resolution / std::fabs(direction_3d_normalized.x());
+                }
+                else if (break_keys[i][1] != break_keys_n[i][1])
+                {
+                    t_max[1] += resolution / std::fabs(direction_3d_normalized.y());
+                }
+            }
+
+
+            if (break_keys[i][0] == break_keys[i+1][0] && break_keys[i][1] == break_keys[i+1][1])
+            {
+                point3d p_query = p_break_3d_1;
+
+                rpo::NodePtr n_single = this->search(p_query, depth);
+
+                if (n_single && this->isNodeOccupied(n_single))
+                {
+                    return false;
+                }
+
+                while (t_max[2] <= std::min(t_max[0], t_max[1])) 
+                {
+                    if (k_target_3d[2] < k_origin_3d[2])
+                    {
+                        p_query.z() -= resolution;
+                    }
+                    else
+                    {
+                        p_query.z() += resolution;
+                    }
+
+                    n_single = this->search(p_query, depth);
+
+                    if (n_single && this->isNodeOccupied(n_single))
+                    {
+                        return false;
+                    }
+
+                    t_max[2] += resolution / std::fabs(direction_3d_normalized.z());
+                }
+            }
+            else
+            {
+                point3d p_end;
+
+                if (!this->castRay3(p_break_3d_1, direction_3d, p_break_3d_2, p_end, true, 10, depth, resolution, t_max[0], t_max[1], t_max[2], show))
+                {   
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+
+
+
+
+
+
+
+
+
     bool AugmentedOcTree::evaluateRayCast(const point3d& target_point, const point3d& end_point, int depth) const
     {
         OcTreeKey target_key, end_key;
@@ -329,8 +972,7 @@ namespace rpo
     bool AugmentedOcTree::checkRayCast(bool good, const point3d& target_point, const point3d& origin, const point3d& direction, 
         point3d& end_point, double max_range, int depth, double resolution, bool ignore_unknown) const
     {
-        if (castRay(origin, direction, target_point, end_point, ignore_unknown, 
-            max_range, depth, resolution))
+        if (castRay(origin, direction, target_point, end_point, ignore_unknown, max_range, depth, resolution))
         {
             if (!good && !evaluateRayCast(target_point, end_point, depth) ||
                  good &&  evaluateRayCast(target_point, end_point, depth))
@@ -444,7 +1086,7 @@ namespace rpo
             }
         }
 
-        std::cout << "Ground level: " << ground_level << std::endl;
+        std::cout << "Ground level: " << ground_level << std::endl;    
     }
 
 
@@ -471,7 +1113,7 @@ namespace rpo
 
                 bool top = false;
 
-                for (int z = 0; z < 3; ++z)
+                for (int z = 0; z < 10; ++z)
                 {
                     top_point.z() = this->max_value[2] - z * resolution - 0.5 * resolution;
 
@@ -538,19 +1180,24 @@ namespace rpo
             switch (node->getType())
             {
             case 1: // General
-                color_node->setColor(255, 0, 0); ++t1;
+                // color_node->setColor(255, 0, 0); ++t1;
+                color_node->setColor(GOLD); ++t1;
                 break;
             case 2: // Ground
-                color_node->setColor(0, 255, 0); ++t2;
+                // color_node->setColor(0, 255, 0); ++t2;
+                color_node->setColor(GREEN); ++t2;
                 break;
             case 3: // Underground
-                color_node->setColor(0, 0, 255); ++t3;
+                // color_node->setColor(0, 0, 255); ++t3;
+                color_node->setColor(BLACK); ++t3;
                 break;
             case 4: // Wall
-                color_node->setColor(255, 255, 0); ++t4;
+                // color_node->setColor(255, 255, 0); ++t4;
+                color_node->setColor(CRIMSON_RED); ++t4;
                 break;
             case 5: // Object
-                color_node->setColor(0, 255, 255); ++t5;
+                // color_node->setColor(0, 255, 255); ++t5;
+                color_node->setColor(SAPPHIRE_BLUE); ++t5;
                 break;
             default:
                 break;

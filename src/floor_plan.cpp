@@ -85,8 +85,8 @@ int main (int argc, char** argv)
 
         if (node == nullptr)
         {
-            node = color_model->updateNode(key, true);
-            node->setColor(rpo::ORANGE);
+            // node = color_model->updateNode(key, true);
+            // node->setColor(rpo::ORANGE);
         }
     }
 
@@ -109,17 +109,14 @@ int main (int argc, char** argv)
                 ColorOcTreeNode* color_node = color_model->search(point);
 
                 // Grid points - purple
-                color_node->setColor(rpo::PURPLE);
+                //color_node->setColor(rpo::PURPLE);
             }
         }  
     }
 
+    std::string outfile = "/home/barni/rpo_ws/src/rpo/experiments/test/models/infirmary_floor.ot";
 
-
-
-
-
-
+    color_model->write(outfile);
 
     ros::NodeHandle node_handle;
     ros::Publisher model_publisher = node_handle.advertise<octomap_msgs::Octomap>("/floor_plan", 10);;

@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <optional>
+#include <stack>
 
 #include <boost/algorithm/string.hpp>
 
@@ -13,9 +14,11 @@ namespace rpo
 {
     using RadiationPlan = std::pair<std::vector<double>, double>;
     using PlanElement = std::pair<point3d, double>;
-    using ExposureMap = std::unordered_map<OcTreeKey, double, OcTreeKey::KeyHash>;
+    using ExposureMap = std::unordered_map<OcTreeKey, float, OcTreeKey::KeyHash>; // Previously double was used
 
     using IndexVector = std::vector<int>;
+
+    using BreakPoints = std::unordered_map<OcTreeKey, std::vector<OcTreeKey>, OcTreeKey::KeyHash>;
 
     struct Score { double general_coverage, object_coverage; };
 
@@ -31,12 +34,15 @@ namespace rpo
         void computeRayTargets();
         std::multimap<double, double> getGroundZone() const;
         RadiationPlan getGrid(const RadiationPlan& plan) const;
+        std::vector<OcTreeKey> getGridElements() const;
 
         // Irradiance maps
         void computeIrradianceMaps();
         void loadIrradianceMaps();
         void saveIrradianceMap(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
+        void saveBinaryMap(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
         ExposureMap loadIrradianceMap(const OcTreeKey& plan_element_key) const;
+        ExposureMap loadBinaryMap(const OcTreeKey& plan_element_key) const;
 
         // Optimization elements
         void setOptimizationElements();
@@ -49,15 +55,40 @@ namespace rpo
         void compute(std::vector<RadiationPlan>& radiation_plans, IndexVector& index_vector);
         double computeCoverageForPlan(RadiationPlan& radiation_plan);
         ExposureMap computeDoseForPlanElement(const PlanElement& plan_element, bool verify);
-        ExposureMap computeIrradianceForPosition(const point3d& lamp_position, bool verify);
-        double computeIrradianceForElement(const point3d& lamp_position, const OcTreeKey& key) const;
+        ExposureMap computeIrradianceForPosition(const point3d& lamp_position, bool verify, int index = -1);
+        double computeIrradianceForElement(const point3d& lamp_position, const OcTreeKey& key, int index = -1);
         double computeIrradianceType1(const point3d& lamp_position, const OcTreeKey& key) const;
         double computeIrradianceType2(const point3d& lamp_position, const OcTreeKey& key) const;
         double computeIrradianceType3(const point3d& lamp_position, const OcTreeKey& key) const;
-        double computeIrradianceType4(const point3d& lamp_position, const OcTreeKey& key) const;
+        double computeIrradianceType4(const point3d& lamp_position, const OcTreeKey& key, int index = -1);
+        // double computeIrradianceType5(const point3d& lamp_position, const OcTreeKey& key);
         double computeIrradianceIntegral(const point3d& distance, const point3d& normal, double L) const;
         bool compute2DVisibility(const point3d& lamp_position, const point3d& element) const;
         bool compute3DVisibility(const point3d& lamp_position, const point3d& element) const;
+        
+        // New functions
+        void computeGeneralVisibility();
+
+        void computeBreakPoints();
+
+        inline double getOrigin(const double base, const double direction) const;
+
+        bool compute3DVisibility2(const point3d& lamp_position, const point3d& element, int index);
+
+
+        // TODO: check functionality
+        /*
+        void compute2DVisibility2(const point3d& lamp_position, const point3d& element, BP& break_key_vector_1, BP& break_key_vector_2);
+
+        bool compute3DVisibility2(const point3d& lamp_position, const point3d& element) const;
+
+        void computeBreakPoints();
+
+        bool checkBreakPoints(const std::vector<OcTreeKey>& break_keys, const point3d& lamp_floor, 
+            const point3d& point_floor, const OcTreeKey& key, const point3d& direction, 
+            double distance_z, const point3d& point, int index, bool show1 = false);
+        */
+
 
     protected:
         Parameters m_parameters;
@@ -67,6 +98,10 @@ namespace rpo
         KeySet m_ground_zone_elements;
         KeySet m_optimization_elements;
         KeySet m_verification_elements;
+        KeySet m_base_reachable_elements;
+        KeySet m_object_elements;
+
+        KeySet m_obstacle_2d;
 
         std::vector<OcTreeKey> m_grid_elements;
 
@@ -74,5 +109,7 @@ namespace rpo
 
         std::vector<ExposureMap> m_irradiance_maps;
 
+        std::vector<BreakPoints> m_break_points_x, m_break_points_y, m_break_points_z;
+        std::vector<BreakPoints> m_break_points_xn, m_break_points_yn, m_break_points_zn;
     };
 }

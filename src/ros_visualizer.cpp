@@ -75,7 +75,7 @@ namespace rpo
                 element.z * resolution);
             
             const ColorOcTreeNode::Color color = element.color ? 
-                  ColorOcTreeNode::Color(255, 0, 255) : 
+                  ColorOcTreeNode::Color(RUBY_RED2) : // ColorOcTreeNode::Color(255, 0, 255) : 
                   ColorOcTreeNode::Color(80, 80, 80);
 
             ColorOcTreeNode* node = m_color_model->search(lamp_point, m_parameters.depth);
@@ -101,6 +101,28 @@ namespace rpo
 
 
 
+
+    void ROSVisualizer::placeLamp2(double x, double y)
+    {
+        point3d center(x, y, m_parameters.ground_level);
+
+        for (int x = -2; x < 3; ++x)
+        {
+            for (int y = -2; y < 3; ++y)
+            {   
+                point3d point = center + point3d(x * m_parameters.resolution, y * m_parameters.resolution, 0);
+
+                ColorOcTreeNode* color_node = m_color_model->search(point);
+
+                // Grid points - ruby red
+                color_node->setColor(RUBY_RED2);
+            }
+        }  
+    }
+
+
+
+
     void ROSVisualizer::deleteLamps()
     {
         for (const auto& key : m_placed_lamps)
@@ -118,6 +140,8 @@ namespace rpo
 
     void ROSVisualizer::cutUnderGround()
     {
+        std::cout << "Before cut: " << m_augmented_model->getNumLeafNodes() << std::endl;
+
         KeySet points_to_delete;
 
         for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
@@ -135,7 +159,83 @@ namespace rpo
             m_augmented_model->deleteNode(key, m_parameters.depth);
             m_color_model->deleteNode(key, m_parameters.depth);
         }
+    
+        std::cout << "After cut: " << m_augmented_model->getNumLeafNodes() << std::endl;
     }
+
+
+
+    void ROSVisualizer::cutUnderGround2()
+    {
+        
+        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        {
+            NodePtr node = m_augmented_model->search(it.getKey(), m_parameters.depth);
+
+            if (node != nullptr && it.getCoordinate().z() < m_parameters.ground_level - 0.5)
+            {
+                ColorOcTreeNode* cnode = m_color_model->updateNode(it.getKey(), true);
+            }
+        }
+        
+
+        KeySet points_to_delete;
+
+        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        {
+            NodePtr node = m_augmented_model->search(it.getKey(), m_parameters.depth);
+
+            if (node != nullptr && it.getCoordinate().z() < m_parameters.ground_level - 0.5)
+            {
+                points_to_delete.insert(it.getKey());
+            }
+        }
+
+        for (const auto& key : points_to_delete)
+        {
+            m_augmented_model->deleteNode(key, m_parameters.depth);
+            // m_color_model->deleteNode(key, m_parameters.depth);
+        }
+    }
+
+
+
+    void ROSVisualizer::filter()
+    {
+        auto boundaries = m_augmented_model->getBoundaries();
+
+        point3d p(boundaries[1] + 0.025 - 1.7, boundaries[3] + 0.025 - 1.7, boundaries[5] + 0.025);
+
+        KeySet points_to_delete;
+
+        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        {
+            point3d query_point = it.getCoordinate();
+
+            if (query_point.x() > p.x() && query_point.y() > p.y())
+            {
+                points_to_delete.insert(it.getKey());
+            }
+        }
+
+        std::cout << points_to_delete.size() << " points found\n";
+
+        for (const auto& key : points_to_delete)
+        {
+            NodePtr node = m_augmented_model->search(key, m_parameters.depth); 
+
+            if (node != nullptr)
+            {
+                m_augmented_model->deleteNode(key, m_parameters.depth);
+                m_color_model->deleteNode(key, m_parameters.depth);
+            }
+        }
+
+        std::cout << m_augmented_model->getNumLeafNodes() << "\n";
+    }
+
+
+
 
 
 
@@ -147,7 +247,7 @@ namespace rpo
             {
                 if (m_optimization_elements.find(it.getKey()) != m_optimization_elements.end())
                 {
-                    node->setColor(255, 255, 255);
+                    // node->setColor(255, 255, 255);
                 }
                 else
                 {
@@ -156,6 +256,10 @@ namespace rpo
             }
         }
 
+        // std::string model_file = "/home/barni/rpo_ws/src/rpo/experiments2/1/infirmary/test/model_opt.ot";
+
+        // m_color_model->write(model_file);
+
         publish();
     }
 
@@ -163,6 +267,7 @@ namespace rpo
 
     void ROSVisualizer::showElementTypes()
     {
+        
         for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
         {
             AugmentedOcTreeNode* augmented_node = m_augmented_model->search(it.getKey());
@@ -177,18 +282,22 @@ namespace rpo
                     {
                         case 1: // General - orange
                             color_node->setColor(ORANGE);
+                            //color_node->setColor(SNOW_WHITE);
                             break;
                         case 2: // Ground - red
-                            color_node->setColor(RED);
+                            color_node->setColor(RUBY_RED2);
+                            //color_node->setColor(SAND);
                             break;
                         case 3: // Underground - black
                             color_node->setColor(BLACK);
                             break;
                         case 4: // Wall - orange
                             color_node->setColor(ORANGE);
+                            //color_node->setColor(SNOW_WHITE);
                             break;
                         case 5: // Object - blue
-                            color_node->setColor(ORANGE);
+                            //color_node->setColor(SAPPHIRE_BLUE);
+                            color_node->setColor(SAPPHIRE_BLUE);
                             break;
                         default:
                             break;
@@ -198,6 +307,7 @@ namespace rpo
                     {
                         // Ground zone - green
                         color_node->setColor(GREEN);
+                        //color_node->setColor(SEAFOAM_GREEN);
                     }   
                 }
                 else
@@ -207,31 +317,33 @@ namespace rpo
                 }
             }   
         }
+        
 
-        // for (const auto& grid_element : m_grid_elements)
-        // {
-        //     point3d center = m_color_model->keyToCoord(grid_element, m_parameters.depth);
+        
+        for (const auto& grid_element : m_grid_elements)
+        {
+            point3d center = m_color_model->keyToCoord(grid_element, m_parameters.depth);
 
-        //     for (int x = -2; x < 3; ++x)
-        //     {
-        //         for (int y = -2; y < 3; ++y)
-        //         {   
-        //             point3d point = center + point3d(x * m_parameters.resolution, y * m_parameters.resolution, 0);
+            for (int x = -2; x < 3; ++x)
+            {
+                for (int y = -2; y < 3; ++y)
+                {   
+                    point3d point = center + point3d(x * m_parameters.resolution, y * m_parameters.resolution, 0);
 
-        //             ColorOcTreeNode* color_node = m_color_model->search(point);
+                    ColorOcTreeNode* color_node = m_color_model->search(point);
 
-        //             // Grid points - purple
-        //             color_node->setColor(PURPLE);
-        //         }
-        //     }  
-        // }
+                    // Grid points - purple
+                    // color_node->setColor(RED);
+                }
+            }  
+        }
 
         publish();
     }
 
 
 
-    void ROSVisualizer::showCoverage(ExposureMap& dose_map, bool binary)
+    void ROSVisualizer::showCoverage(ExposureMap& dose_map, bool binary, bool grid)
     {
         for (ColorOcTree::leaf_iterator it = m_color_model->begin_leafs(), end = m_color_model->end_leafs(); it != end; ++it)
         {
@@ -248,6 +360,8 @@ namespace rpo
                         if (exposure >= m_parameters.exposure_limit)
                         {
                             node->setColor(static_cast<int>(255 * R[255]), static_cast<int>(255 * G[255]), static_cast<int>(255 * B[255]));
+                            // node->setColor(255, 255, 0);
+                            // node->setColor(0, 255, 255);
                         }
                         else
                         {
@@ -260,6 +374,9 @@ namespace rpo
                                 const int scale = static_cast<int>(round(255 * exposure / m_parameters.exposure_limit));
 
                                 node->setColor(static_cast<int>(255 * R[scale]), static_cast<int>(255 * G[scale]), static_cast<int>(255 * B[scale]));
+
+                                // node->setColor(scale, scale, 0);
+                                // node->setColor(0, scale, scale);
                             }
                         }
                 
@@ -271,6 +388,30 @@ namespace rpo
                 }
             }
         }
+
+
+        // if (grid)
+        // {
+        //     for (const auto& grid_element : m_grid_elements)
+        //     {
+        //         point3d center = m_color_model->keyToCoord(grid_element, m_parameters.depth);
+
+        //         for (int x = -2; x < 3; ++x)
+        //         {
+        //             for (int y = -2; y < 3; ++y)
+        //             {   
+        //                 point3d point = center + point3d(x * m_parameters.resolution, y * m_parameters.resolution, 0);
+
+        //                 ColorOcTreeNode* color_node = m_color_model->search(point);
+
+        //                 // Grid points - purple
+        //                 color_node->setColor(RUBY_RED2);
+        //             }
+        //         }  
+        //     }
+        // }
+
+
 
         publish();
     }
@@ -304,40 +445,59 @@ namespace rpo
             exposure_maps[i / element_size] = computeDoseForPlanElement(plan_element, verify);
         }
 
-        for (int i = 0; i < elements.size(); i += element_size)
-        {
-            placeLamp(elements[i], elements[i + 1]);
-        }
+        // for (int i = 0; i < elements.size(); i += element_size)
+        // {
+        //     placeLamp(elements[i], elements[i + 1]);
+        // }
 
-        int general_over = 0, object_over = 0, object_sum = 0;
+        int general_over = 0, object_over = 0, object_sum = m_object_elements.size();
 
-        for (auto& element : exposure_maps[0])
+        rpo::ExposureMap exposure_map;
+
+        //for (auto& element : exposure_maps[0])
+        for (auto& element : m_verification_elements)
         {
-            for (int i = 1; i < exposure_maps.size(); ++i)
+            exposure_map[element] = 0;
+
+            for (int i = 0; i < exposure_maps.size(); ++i)
             {
-                element.second += exposure_maps[i][element.first];
+                // element.second += exposure_maps[i][element.first];
+                exposure_map[element] += exposure_maps[i][element];
             }
 
-            if (std::isnan(element.second))
+            // if (std::isnan(element.second))
+            // {
+            //     element.second = 0;
+            // }
+
+            // if (element.second > m_parameters.exposure_limit)
+            // {
+            //     general_over += 1;
+            // }
+
+            if (std::isnan(exposure_map[element]))
             {
-                element.second = 0;
+                exposure_map[element] = 0;
             }
 
-            if (element.second > m_parameters.exposure_limit)
+
+            if (exposure_map[element] >= m_parameters.exposure_limit)
             {
                 general_over += 1;
             }
 
-            NodePtr node = m_augmented_model->search(element.first, m_parameters.depth);
+
+            NodePtr node = m_augmented_model->search(element, m_parameters.depth);
 
             if (node != nullptr && node->getType() == 5)
             {
-                if ((!verify && (m_optimization_elements.find(element.first) != m_optimization_elements.end())) ||
-                    ( verify && (m_verification_elements.find(element.first) != m_verification_elements.end())))
+                if ((!verify && (m_optimization_elements.find(element) != m_optimization_elements.end())) ||
+                    ( verify && (m_verification_elements.find(element) != m_verification_elements.end())))
                 {
-                    object_sum += 1;
+                    // object_sum += 1;
                     
-                    if (element.second >= m_parameters.exposure_limit)
+                    // if (element.second >= m_parameters.exposure_limit)
+                    if (exposure_map[element] >= m_parameters.exposure_limit)
                     {
                         object_over += 1;
                     }
@@ -358,11 +518,18 @@ namespace rpo
 
         score.object_coverage  = static_cast<double>(object_over)  / static_cast<double>(object_sum);
 
-        showCoverage(exposure_maps[0], false);
+        // showCoverage(exposure_maps[0], false);
+        showCoverage(exposure_map, false, true);
+
+        for (int i = 0; i < elements.size(); i += element_size)
+        {
+            placeLamp2(elements[i], elements[i + 1]);
+        }
+
 
         publish();
 
-        deleteLamps();
+        //deleteLamps();
 
         m_parameters.computation_type = computation_type;
     

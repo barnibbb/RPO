@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="rpo" pkg="rpo" type="FloorPlan" args="/home/barni/rpo_ws/src/rpo/experiments/test/params_30.txt" output="screen"/>
+</launch>

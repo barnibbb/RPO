@@ -1,0 +1,97 @@
+Color combinations 4:
+
+1. Earthy Tones
+
+    Warm Brown: RGB(139, 69, 19)
+    Olive Green: RGB(85, 107, 47)
+    Cream: RGB(255, 253, 208)
+    Deep Burgundy: RGB(128, 0, 32)
+
+2. Ocean Breeze
+
+    Aqua Blue: RGB(0, 206, 209)
+    Seafoam Green: RGB(46, 139, 87)
+    Coral: RGB(255, 127, 80)
+    Sand: RGB(245, 222, 179)
+
+3. Soft Pastels
+
+    Lavender: RGB(230, 230, 250)
+    Soft Pink: RGB(255, 192, 203)
+    Mint Green: RGB(152, 251, 152)
+    Light Gray: RGB(211, 211, 211)
+
+4. Sunset Glow
+
+    Deep Purple: RGB(102, 51, 153)
+    Bright Orange: RGB(255, 165, 0)
+    Magenta: RGB(255, 0, 255)
+    Golden Yellow: RGB(255, 215, 0)
+
+5. Elegant Neutrals
+
+    Charcoal: RGB(54, 69, 79)
+    Slate Blue: RGB(106, 90, 205)
+    Pale Sage: RGB(178, 172, 136)
+    Ivory: RGB(255, 255, 240)
+
+6. Vintage Blues and Golds
+
+    Navy Blue: RGB(0, 0, 128)
+    Dusty Rose: RGB(192, 128, 129)
+    Gold: RGB(255, 215, 0)
+    Light Blue: RGB(173, 216, 230)
+
+
+
+
+Color combinations 5:
+
+1. Forest Walk
+
+    Moss Green: RGB(72, 87, 57)
+    Deep Forest Green: RGB(34, 49, 36)
+    Bark Brown: RGB(101, 67, 33)
+    Sage: RGB(181, 184, 159)
+    Misty Gray: RGB(220, 220, 220)
+
+2. Muted Warmth
+
+    Burnt Orange: RGB(204, 85, 0)
+    Soft Yellow: RGB(255, 236, 179)
+    Rose Dust: RGB(183, 110, 121)
+    Olive Brown: RGB(112, 97, 80)
+    Warm Gray: RGB(170, 152, 138)
+
+3. Cool Winter Blues
+
+    Ice Blue: RGB(173, 216, 230)
+    Storm Gray: RGB(112, 128, 144)
+    Midnight Blue: RGB(25, 25, 112)
+    Silver: RGB(192, 192, 192)
+    Soft White: RGB(250, 250, 250)
+
+4. Vibrant Garden
+
+    Magenta: RGB(255, 0, 255)
+    Spring Green: RGB(0, 255, 127)
+    Lemon Yellow: RGB(255, 255, 0)
+    Tangerine: RGB(255, 165, 0)
+    Deep Violet: RGB(138, 43, 226)
+
+5. Desert Sunset
+
+    Sunset Orange: RGB(252, 108, 133)
+    Soft Peach: RGB(255, 204, 153)
+    Warm Sand: RGB(237, 201, 175)
+    Dusk Purple: RGB(102, 51, 153)
+    Nightfall Blue: RGB(25, 25, 112)
+
+6. Urban Neutrals
+
+    Slate Gray: RGB(112, 128, 144)
+    Charcoal: RGB(54, 69, 79)
+    Graphite Black: RGB(34, 34, 34)
+    Soft Cream: RGB(242, 242, 239)
+    Light Steel Blue: RGB(176, 196, 222)
+

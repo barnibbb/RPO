@@ -5,7 +5,7 @@
 
 int main(int argc, char** argv)
 {
-    const std::string parameters_file = "/home/barni/rpo_ws/src/rpo/test/test_params.txt";
+    const std::string parameters_file = "/home/barni/rpo_ws/src/rpo/experiments/2d/params_3.txt";
 
     rpo::Parameters parameters;
 
@@ -53,6 +53,7 @@ int main(int argc, char** argv)
             << "\nincrement: "                 << parameters.increment
             << "\ncondition: "                 << parameters.condition
             << "\nverify: "                    << parameters.verify
+            << "\nfilter: "                    << parameters.filter    
             << "\n";
     }
     

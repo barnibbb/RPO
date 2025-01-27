@@ -7,8 +7,6 @@ int main (int argc, char** argv)
 {
     auto start_overall = std::chrono::high_resolution_clock::now();
 
-
-
     // Read input parameters -------------------------------------------------------
     rpo::Parameters parameters;
     
@@ -16,7 +14,10 @@ int main (int argc, char** argv)
     {
         const std::string parameters_file = argv[1];
 
-        parameters.setValues(parameters_file);
+        if (!parameters.setValues(parameters_file))
+        {
+            return -1;
+        }
     }
     else
     {
@@ -62,7 +63,7 @@ int main (int argc, char** argv)
         std::cerr << "Could not open augmented octree file!" << std::endl;
         return -1;
     }
-    
+
 
 
     // Visualizer initialization ---------------------------------------------------
@@ -78,10 +79,13 @@ int main (int argc, char** argv)
     visualizer.computeGridElements();
     visualizer.computeRayTargets();
 
+    std::chrono::seconds precomp_time;
+
+    // visualizer.filter();
 
 
     // Get irradiance maps ---------------------------------------------------------
-    if (parameters.computation_type == 7 && !parameters.load_maps)
+    if ((parameters.computation_type == 7 || parameters.computation_type == 8) && !parameters.load_maps)
     {
         auto start_precomputation = std::chrono::high_resolution_clock::now();
 
@@ -89,9 +93,9 @@ int main (int argc, char** argv)
         
         auto stop_precomputation = std::chrono::high_resolution_clock::now();
     
-        auto duration_precomputation = std::chrono::duration_cast<std::chrono::seconds>(stop_precomputation - start_precomputation);
+        precomp_time = std::chrono::duration_cast<std::chrono::seconds>(stop_precomputation - start_precomputation);
 
-        std::cout << "Precomputation time: " << duration_precomputation.count() << std::endl;
+        std::cout << "Precomputation time: " << precomp_time.count() << std::endl;
     }
     else
     {
@@ -105,6 +109,7 @@ int main (int argc, char** argv)
     visualizer.showOptimizationElements();
 
 
+    // return 0;
 
     // Initialize plan generator ---------------------------------------------------
     rpo::PlanGenerator generator(visualizer.getParameters());
@@ -112,6 +117,11 @@ int main (int argc, char** argv)
     generator.setModelBoundaries(augmented_model->getBoundaries());
     generator.setGroundZone(visualizer.getGroundZone());
 
+    visualizer.showElementTypes();
+    
+    std::cout << "Elements shown!" << std::endl;
+
+    
 
 
     // Iterative optimization ------------------------------------------------------
@@ -192,7 +202,7 @@ int main (int argc, char** argv)
                << object_coverage << '\t' 
                << duration_iteration.count() << '\t';
 
-            for (const auto& gene : best_plan.first)
+            for (const auto& gene : visualizer.getGrid(best_plan).first)
             {
                 fl << gene << '\t';
             }
@@ -255,7 +265,16 @@ int main (int argc, char** argv)
         fs << "Optimized coverage: "        << optimized_coverage        << std::endl;
         fs << "Verified coverage: "         << verified_coverage         << std::endl;
         fs << "Final number of positions: " << final_number_of_positions << std::endl;
-        fs << "Overall duration: "          << duration_overall.count()  << std::endl << std::endl << std::endl;
+        fs << "Overall duration: "          << duration_overall.count()  << std::endl;
+        
+        if (parameters.computation_type == 7 || parameters.computation_type == 8)
+        {
+            fs << "Precomputation time: "   << precomp_time.count() << "\n\n\n";
+        }
+        else
+        {
+            fs << "\n\n";
+        }
         
         fs.close();
     }
@@ -263,7 +282,16 @@ int main (int argc, char** argv)
     std::cout << "Optimized coverage: "        << optimized_coverage        << std::endl;
     std::cout << "Verified coverage: "         << verified_coverage         << std::endl;
     std::cout << "Final number of positions: " << final_number_of_positions << std::endl;
-    std::cout << "Overall duration: "          << duration_overall.count()  << std::endl << std::endl << std::endl;
+    std::cout << "Overall duration: "          << duration_overall.count()  << std::endl;
+    
+    if (parameters.computation_type == 7 || parameters.computation_type == 8)
+    {
+        std::cout << "Precomputation time: "   << precomp_time.count() << "\n\n\n";
+    }
+    else
+    {
+        std::cout << "\n\n";
+    }
 
     return 0;
 }
