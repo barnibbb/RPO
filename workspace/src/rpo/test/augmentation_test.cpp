@@ -1,14 +1,33 @@
 #include "augmented_octree.h"
 
+#include <filesystem>
+#include <regex>
+
 #include <ros/ros.h>
 
 int main (int argc, char** argv)
 {
-    const std::string color_model_file = "/home/appuser/data/models/infirmary_color.ot";
-    const std::string augmented_model_file = "/home/appuser/data/models/infirmary_augmented.ot";
+    if (argc != 4)
+    {
+        std::cerr << "Usage: rosrun rpo  Augmentation <color_model> <surface> <visualize>" << std::endl;
+        return -1;
+    }
 
-    bool surface = true;
-    bool visualize = true;
+    // Processing input parameters
+    const std::string color_model_file = argv[1];
+
+    std::filesystem::path color_path(color_model_file);
+    std::filesystem::path dir = color_path.parent_path();
+    std::string stem = color_path.stem().string();
+
+    std::string new_stem = std::regex_replace(stem, std::regex("_color$"), "_augmented");
+    std::string new_filename = new_stem + color_path.extension().string();
+    std::filesystem::path augmented_model_path = dir / new_filename;
+
+    const std::string augmented_model_file = augmented_model_path.string();
+
+    bool surface = std::string(argv[2]) == "1" ? true : false;
+    bool visualize = std::string(argv[3]) == "1" ? true : false;
 
     std::ifstream file_1(color_model_file);
 
