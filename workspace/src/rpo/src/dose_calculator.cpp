@@ -1,5 +1,10 @@
 #include "dose_calculator.h"
 
+#include <boost/algorithm/string.hpp>
+#include <pcl/features/normal_3d.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <signal.h>
 
 namespace rpo
 {
@@ -165,7 +170,6 @@ namespace rpo
 
         
         /// Selecting largest ground zone
-
         KeySet visited;
 
         int region_count = 0;

@@ -1,5 +1,8 @@
 #include "plan_generator.h"
 
+#include <ctime>
+#include <algorithm>
+
 namespace rpo
 {
     PlanGenerator::PlanGenerator(const Parameters& parameters)

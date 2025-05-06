@@ -2,10 +2,6 @@
 #include <memory>
 #include <random>
 #include <map>
-#include <iostream>
-#include <ctime>
-#include <algorithm>
-#include <iomanip>
 
 #include "parameters.h"
 

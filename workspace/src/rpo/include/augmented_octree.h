@@ -1,19 +1,9 @@
 #pragma once
 
 #include <string>
-#include <fstream>
-#include <iostream>
 #include <memory>
-#include <unordered_set>
-#include <map>
-#include <functional>
 
 #include <octomap/ColorOcTree.h>
-#include <pcl/features/normal_3d.h>
-
-#include <ros/ros.h>
-#include <octomap_msgs/Octomap.h>
-#include <octomap_msgs/conversions.h>
 
 using namespace octomap;
 
@@ -127,11 +117,6 @@ namespace rpo
     const Color SUNLIT_YELLOW(255, 223, 0);
     const Color COBALT_BLUE(0, 71, 171);
     const Color RICH_PLUM(142, 36, 170);
-
-
-
-
-    using KeySet = std::unordered_set<OcTreeKey, OcTreeKey::KeyHash>;
 
     const double PRECISION = 1e-4;
 

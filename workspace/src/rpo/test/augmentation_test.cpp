@@ -1,5 +1,7 @@
 #include "augmented_octree.h"
 
+#include <ros/ros.h>
+
 int main (int argc, char** argv)
 {
     const std::string color_model_file = "/home/appuser/data/models/infirmary_color.ot";

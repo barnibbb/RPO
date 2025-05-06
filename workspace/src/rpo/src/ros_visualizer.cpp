@@ -1,5 +1,9 @@
 #include "ros_visualizer.h"
 
+#include <boost/algorithm/string.hpp>
+#include <octomap_msgs/Octomap.h>
+#include <signal.h>
+
 namespace rpo
 {
     void handler2(int s)

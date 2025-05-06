@@ -1,7 +1,13 @@
 #include "augmented_octree.h"
 
-using namespace octomap;
+#include <iostream>
+#include <fstream>
 
+#include <octomap_msgs/Octomap.h>
+#include <pcl/features/normal_3d.h>
+#include <ros/ros.h>
+
+using namespace octomap;
 
 namespace rpo
 {

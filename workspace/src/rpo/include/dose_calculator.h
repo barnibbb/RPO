@@ -1,12 +1,6 @@
 #include <unordered_map>
 #include <memory>
 #include <vector>
-#include <optional>
-#include <stack>
-
-#include <boost/algorithm/string.hpp>
-
-#include <signal.h>
 
 #include "augmented_octree.h"
 #include "parameters.h"

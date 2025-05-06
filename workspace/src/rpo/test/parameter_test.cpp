@@ -1,7 +1,6 @@
-#include <fstream>
-#include <iostream>
-
 #include "parameters.h"
+
+#include <iostream>
 
 int main(int argc, char** argv)
 {
