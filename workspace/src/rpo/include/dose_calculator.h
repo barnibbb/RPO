@@ -9,6 +9,7 @@
 #include <signal.h>
 
 #include "augmented_octree.h"
+#include "parameters.h"
 
 namespace rpo
 {
@@ -77,6 +78,10 @@ namespace rpo
 
     protected:
         Parameters m_parameters;
+        
+        int m_depth;
+        double m_resolution;
+        double m_ground_level;
 
         std::shared_ptr<AugmentedOcTree> m_augmented_model = nullptr;
 

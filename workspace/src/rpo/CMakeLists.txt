@@ -9,6 +9,7 @@ endif()
 
 find_package(octomap REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -33,12 +34,12 @@ add_executable(Parameters
 
 target_link_libraries(Parameters
   ${catkin_LIBRARIES}
+  yaml-cpp
 )
 
 add_executable(Augmentation
   test/augmentation_test.cpp
   src/augmented_octree.cpp
-  src/parameters.cpp
 )
 
 target_link_libraries(Augmentation
@@ -57,4 +58,5 @@ add_executable(RPO
 target_link_libraries(RPO
   ${catkin_LIBRARIES}
   OpenMP::OpenMP_CXX
+  yaml-cpp
 )

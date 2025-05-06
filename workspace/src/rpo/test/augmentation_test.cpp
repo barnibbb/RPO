@@ -2,8 +2,8 @@
 
 int main (int argc, char** argv)
 {
-    const std::string color_model_file = "/home/barni/rpo_ws/src/rpo/experiments/models_figs/models/base/cafe_color.ot";
-    const std::string augmented_model_file = "/home/barni/rpo_ws/src/rpo/experiments/models_figs/models/augmented/cafe_augmented_surface_2.ot";
+    const std::string color_model_file = "/home/appuser/data/models/infirmary_color.ot";
+    const std::string augmented_model_file = "/home/appuser/data/models/infirmary_augmented.ot";
 
     bool surface = true;
     bool visualize = true;
@@ -60,8 +60,12 @@ int main (int argc, char** argv)
         } 
 
         file_1.close();
-
     }
+    else
+    {
+        std::cerr << "Could not open color octree file" << std::endl;
+    }
+
 
     return 0;
 }

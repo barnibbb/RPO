@@ -55,9 +55,9 @@ else
         --env NVIDIA_VISIBLE_DEVICES=all \
         --env NVIDIA_DRIVER_CAPABILITIES=all \
         --volume /tmp/.X11-unix:/tmp/.X11-unix \
-        --volume ${codes}:/home/appuser/rpo \
+        --volume ${codes}:/home/appuser/workspace \
         --volume ${data}:/home/appuser/data \
-        --volume ${vscode_folder}:/home/appuser/rpo/.vscode \
+        --volume ${vscode_folder}:/home/appuser/workspace/.vscode \
         --network host \
         --interactive \
         --privileged \

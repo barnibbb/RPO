@@ -89,7 +89,8 @@ RUN apt-get update && \
     ros-noetic-octomap-ros \
     ros-noetic-octomap-rviz-plugins \
     ros-noetic-pcl-ros \
-    libomp-dev
+    libomp-dev \
+    libyaml-cpp-dev
 
 
 RUN rosdep init

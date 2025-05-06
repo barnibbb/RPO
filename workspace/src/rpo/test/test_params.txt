@@ -48,3 +48,4 @@ disinfection time: 7200
 increment: 0.00001
 condition: true
 verify: false
+filter: true

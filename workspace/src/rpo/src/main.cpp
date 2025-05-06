@@ -1,4 +1,5 @@
 #include <chrono>
+#include <filesystem>
 
 #include "ros_visualizer.h"
 #include "plan_generator.h"
@@ -8,31 +9,25 @@ int main (int argc, char** argv)
     auto start_overall = std::chrono::high_resolution_clock::now();
 
     // Read input parameters -------------------------------------------------------
-    rpo::Parameters parameters;
-    
-    if (argc > 1)
+    if (argc != 2)
     {
-        const std::string parameters_file = argv[1];
-
-        if (!parameters.setValues(parameters_file))
-        {
-            return -1;
-        }
-    }
-    else
-    {
-        std::cerr << "Parameter file must set!" << std::endl;
-
+        std::cerr << "Usage: rosrun rpo RPO <parameter_file>" << std::endl;
         return -1;
     }
 
+    const std::string parameters_file = argv[1];
+
+    rpo::Parameters parameters = rpo::Parameters::loadParameters(parameters_file);
+
+
+    std::filesystem::create_directory(parameters.paths.irradiance_maps);
 
 
     // Read 3D models --------------------------------------------------------------                                                                                  
     std::shared_ptr<ColorOcTree> color_model = nullptr;
     std::shared_ptr<rpo::AugmentedOcTree> augmented_model = nullptr;
 
-    std::ifstream file(parameters.color_model_file);
+    std::ifstream file(parameters.paths.color_model);
 
     if (file.is_open())
     {
@@ -48,7 +43,7 @@ int main (int argc, char** argv)
         return -1;
     }
 
-    file.open(parameters.augmented_model_file);
+    file.open(parameters.paths.augmented_model);
 
     if (file.is_open())
     {
@@ -63,6 +58,10 @@ int main (int argc, char** argv)
         std::cerr << "Could not open augmented octree file!" << std::endl;
         return -1;
     }
+
+
+    assert(color_model->getNumLeafNodes() < 1'000);
+    assert(autmented_model->getNumLeafNodes() < 1'000);
 
 
 
@@ -81,12 +80,15 @@ int main (int argc, char** argv)
 
     std::chrono::seconds precomp_time;
 
-    // TODO: filter random artifact from K408 model
-    // visualizer.filter();
 
+    if (parameters.computation.filter)
+    {
+        visualizer.filter();
+    }
+    
 
     // Get irradiance maps ---------------------------------------------------------
-    if ((parameters.computation_type == 7 || parameters.computation_type == 8) && !parameters.load_maps)
+    if ((parameters.computation.type == 7 || parameters.computation.type == 8) && !parameters.computation.load_maps)
     {
         auto start_precomputation = std::chrono::high_resolution_clock::now();
 
@@ -127,19 +129,19 @@ int main (int argc, char** argv)
     rpo::RadiationPlan previous_best_plan;
     rpo::RadiationPlan best_plan;
 
-    while (generator.getNumPos() <= parameters.end_number_of_positions)
+    while (generator.getNumPos() <= parameters.optimization.end_positions)
     {
         auto start_iteration = std::chrono::high_resolution_clock::now();
 
         generator.createInitialPopulation();
 
-        for (unsigned int i = 0; i < parameters.maximum_generations; ++i)
+        for (unsigned int i = 0; i < parameters.optimization.max_generations; ++i)
         {
             visualizer.compute(generator.getPopulation(), generator.getIndexOfUnevaluated());
 
             generator.selectSurvivals();
 
-            if (generator.getBestPlan().second >= parameters.target_coverage)
+            if (generator.getBestPlan().second >= parameters.computation.target_coverage)
             {
                 break;
             }
@@ -165,7 +167,7 @@ int main (int argc, char** argv)
         double general_coverage = best_plan.second;
         double object_coverage = -1;
         
-        if (parameters.verify || parameters.semantic)
+        if (parameters.optimization.verify || parameters.computation.semantic)
         {
             rpo::Score score = visualizer.showResult(visualizer.getGrid(best_plan), true);
 
@@ -179,7 +181,7 @@ int main (int argc, char** argv)
         std::cout << std::setprecision(5) << generator.getNumPos() << '\t' << general_coverage << '\t' << object_coverage << '\t' << duration_iteration.count() << '\n';
 
         // Short report
-        std::fstream fs(parameters.short_report_file, std::ios::out | std::ios::app);
+        std::fstream fs(parameters.paths.short_report, std::ios::out | std::ios::app);
     
         if (fs.is_open())
         {
@@ -192,7 +194,7 @@ int main (int argc, char** argv)
         }
 
         // Long report
-        std::fstream fl(parameters.long_report_file, std::ios::out | std::ios::app);
+        std::fstream fl(parameters.paths.long_report, std::ios::out | std::ios::app);
         
         if (fl.is_open())
         {
@@ -214,9 +216,9 @@ int main (int argc, char** argv)
 
 
         // Exit criteria -----------------------------------------------------------
-        if (best_plan.second < parameters.target_coverage)
+        if (best_plan.second < parameters.computation.target_coverage)
         {
-            if (parameters.condition && generator.getNumPos() > parameters.start_number_of_positions && best_plan.second - previous_best_plan.second <= parameters.increment)
+            if (parameters.optimization.condition && generator.getNumPos() > parameters.optimization.start_positions && best_plan.second - previous_best_plan.second <= parameters.optimization.increment)
             {
                 best_plan = previous_best_plan;
                 std::cout << "Inferior result!" << std::endl;
@@ -245,9 +247,9 @@ int main (int argc, char** argv)
     double optimized_coverage = best_plan.second;
     double verified_coverage = best_plan.second;
 
-    int final_number_of_positions = best_plan.first.size() / parameters.plan_element_size;
+    int final_number_of_positions = best_plan.first.size() / parameters.optimization.element_size;
 
-    if (!parameters.verify && !parameters.semantic)
+    if (!parameters.optimization.verify && !parameters.computation.semantic)
     {
         rpo::Score score = visualizer.showResult(visualizer.getGrid(best_plan), true);
 
@@ -257,7 +259,7 @@ int main (int argc, char** argv)
 
 
     // Final report ----------------------------------------------------------------
-    std::fstream fs(parameters.short_report_file, std::ios::out | std::ios::app);
+    std::fstream fs(parameters.paths.short_report, std::ios::out | std::ios::app);
 
     if (fs.is_open())
     {
@@ -266,7 +268,7 @@ int main (int argc, char** argv)
         fs << "Final number of positions: " << final_number_of_positions << std::endl;
         fs << "Overall duration: "          << duration_overall.count()  << std::endl;
         
-        if (parameters.computation_type == 7 || parameters.computation_type == 8)
+        if (parameters.computation.type == 7 || parameters.computation.type == 8)
         {
             fs << "Precomputation time: "   << precomp_time.count() << "\n\n\n";
         }
@@ -283,7 +285,7 @@ int main (int argc, char** argv)
     std::cout << "Final number of positions: " << final_number_of_positions << std::endl;
     std::cout << "Overall duration: "          << duration_overall.count()  << std::endl;
     
-    if (parameters.computation_type == 7 || parameters.computation_type == 8)
+    if (parameters.computation.type == 7 || parameters.computation.type == 8)
     {
         std::cout << "Precomputation time: "   << precomp_time.count() << "\n\n\n";
     }

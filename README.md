@@ -14,46 +14,15 @@
 cd /home/appuser/rpo
 catkin init
 catkin build
+source devel/setup.bash
 ```
-
-**Keywords**: 3D reconstruction, OctoMap representation, irradiance estimation, genetic algorithm based optimization, minimal set of required radiation positions
-
-![image1]
-Segmented 3D model of a test environment.
-![image2]
-High disinfection level achieved with only five radiation positions.
-
-## Requirements
-
-- Ubuntu 18.04
-- ROS Melodic
-- pcl_ros
-- octomap_ros
-- octomap_rviz_plugins (for rviz visualization)
-- OpenMP (for parallel computing)
-
-## Install
-
-- Create "catkin_ws"
-- Place RPO and octomap_rviz_plugins to "catkin_ws/src/"
-- Run catkin build
 
 ## Run experiment
 
-- Navigate to "RPO/experiments/test" folder
-- Check "params.txt" for parameter check, set work folder to point to the test folder
-- Run the following commands:
-
-```console
-roslaunch RPO rviz.launch
-```
-
-```console
-rosrun RPO RPO
-```
-
-- Check short_reports and long_reports folders for results
-
 ## System overview
 
-![image3]
+## Notes
+
+- Augmented models require regeneration when new features are assigned to cells.
+- Parameter names might be updated later + description.
+- Frequently used parameters might be set as independent variables.

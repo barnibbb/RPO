@@ -32,7 +32,7 @@ namespace rpo
     // TODO: understand
     bool PlanGenerator::isElementOfGroundZone(double x, double y) const
     {
-        const double factor = 2 / m_parameters.resolution;
+        const double factor = 2 / m_parameters.preprocessing.resolution;
 
         const double x_factor = factor * x;
         const double y_factor = factor * y;
@@ -87,7 +87,7 @@ namespace rpo
 
     int PlanGenerator::getNumPos() const
     {
-        return m_parameters.number_of_positions;
+        return m_parameters.optimization.num_positions;
     }
 
 
@@ -119,11 +119,11 @@ namespace rpo
     {
         if (m_population.size() == 0)
         {
-            for (size_t i = 0; i < 2 * m_parameters.population_size; ++i)
+            for (size_t i = 0; i < 2 * m_parameters.optimization.population_size; ++i)
             {
-                std::vector<double> individual(m_parameters.individual_size);
+                std::vector<double> individual(m_parameters.optimization.individual_size);
 
-                for (size_t j = 0; j < m_parameters.individual_size; j += m_parameters.plan_element_size)
+                for (size_t j = 0; j < m_parameters.optimization.individual_size; j += m_parameters.optimization.element_size)
                 {
                     addNewPosition(individual, j, false);
                 }
@@ -146,13 +146,13 @@ namespace rpo
 
             const int size = individual.size();
 
-            individual.resize(size + m_parameters.plan_element_size);
+            individual.resize(size + m_parameters.optimization.element_size);
 
             if (index < size)
             {
                 for (int i = size - 1; i >= index; --i)
                 {
-                    individual[i + m_parameters.plan_element_size] = individual[i];
+                    individual[i + m_parameters.optimization.element_size] = individual[i];
                 }
             }
         }
@@ -160,7 +160,7 @@ namespace rpo
         static std::uniform_real_distribution distribution_x(m_model_boundaries[0], m_model_boundaries[1]);
         static std::uniform_real_distribution distribution_y(m_model_boundaries[2], m_model_boundaries[3]);
 
-        double base_time = m_parameters.disinfection_time / static_cast<double>(m_parameters.number_of_positions);
+        double base_time = m_parameters.optimization.disinfection_time / static_cast<double>(m_parameters.optimization.num_positions);
 
         std::normal_distribution<double> distribution_t(base_time, 0.1 * base_time);
 
@@ -219,7 +219,7 @@ namespace rpo
 
     void PlanGenerator::normalizeRadiationTime(std::vector<double>& individual, bool extend) const
     {
-        const int element_size = m_parameters.plan_element_size;
+        const int element_size = m_parameters.optimization.element_size;
 
         double full_time = 0;
 
@@ -232,11 +232,11 @@ namespace rpo
         {
             if (extend)
             {
-                individual[i + 2] *= m_parameters.disinfection_time / (full_time * (individual.size() + element_size) / individual.size());
+                individual[i + 2] *= m_parameters.optimization.disinfection_time / (full_time * (individual.size() + element_size) / individual.size());
             }
             else
             {
-                individual[i + 2] *= m_parameters.disinfection_time / full_time;
+                individual[i + 2] *= m_parameters.optimization.disinfection_time / full_time;
             }
         }
     }
@@ -254,17 +254,16 @@ namespace rpo
 
     void PlanGenerator::incrementPlans()
     {
-        // TODO: might not make any difference
         m_unevaluated_individuals.erase(m_unevaluated_individuals.begin(), m_unevaluated_individuals.end());
 
-        m_parameters.number_of_positions += 1;
-        m_parameters.individual_size += m_parameters.plan_element_size;
+        m_parameters.optimization.num_positions += 1;
+        m_parameters.optimization.individual_size += m_parameters.optimization.element_size;
 
         for (size_t i = 0; i < m_population.size(); ++i)
         {
-            std::uniform_int_distribution uniform_distribution(0, static_cast<int>(m_population[i].first.size() / m_parameters.plan_element_size));
+            std::uniform_int_distribution uniform_distribution(0, static_cast<int>(m_population[i].first.size() / m_parameters.optimization.element_size));
 
-            int index = m_parameters.plan_element_size * uniform_distribution(*m_engine);
+            int index = m_parameters.optimization.element_size * uniform_distribution(*m_engine);
 
             addNewPosition(m_population[i].first, index, true);
 
@@ -278,7 +277,7 @@ namespace rpo
 
     void PlanGenerator::selectSurvivals()
     {
-        const IndexVector survivals = select(m_parameters.survival_selection_type, m_parameters.population_size);
+        const IndexVector survivals = select(m_parameters.optimization.survival_selection_type, m_parameters.optimization.population_size);
 
         std::vector<RadiationPlan> old_population = m_population;
 
@@ -414,9 +413,9 @@ namespace rpo
 
     void PlanGenerator::recombine()
     {
-        m_parents = select(m_parameters.crossover_selection_type, 2 * m_parameters.number_of_crossovers);
+        m_parents = select(m_parameters.optimization.crossover_selection_type, 2 * m_parameters.optimization.num_crossovers);
 
-        switch(m_parameters.crossover_type)
+        switch(m_parameters.optimization.crossover_type)
         {
         case 1:
             applyUniformCrossover();
@@ -440,10 +439,10 @@ namespace rpo
 
         for (size_t i = 0; i < m_parents.size(); i += 2)
         {
-            std::vector<double> offspring_1(m_parameters.individual_size);
-            std::vector<double> offspring_2(m_parameters.individual_size);
+            std::vector<double> offspring_1(m_parameters.optimization.individual_size);
+            std::vector<double> offspring_2(m_parameters.optimization.individual_size);
 
-            for (size_t j = 0; j < m_parameters.individual_size; ++j)
+            for (size_t j = 0; j < m_parameters.optimization.individual_size; ++j)
             {
                 if (distribution(*m_engine) < 0.5)
                 {
@@ -471,18 +470,18 @@ namespace rpo
     {
         for (size_t i = 0; i < m_parents.size(); i += 2)
         {
-            std::vector<double> offspring_1(m_parameters.individual_size);
-            std::vector<double> offspring_2(m_parameters.individual_size);
+            std::vector<double> offspring_1(m_parameters.optimization.individual_size);
+            std::vector<double> offspring_2(m_parameters.optimization.individual_size);
 
-            std::uniform_int_distribution distribution_first(0, m_parameters.individual_size - 1);
+            std::uniform_int_distribution distribution_first(0, m_parameters.optimization.individual_size - 1);
 
             const int first = distribution_first(*m_engine);
 
-            std::uniform_int_distribution distribution_last(first, m_parameters.individual_size - 1);
+            std::uniform_int_distribution distribution_last(first, m_parameters.optimization.individual_size - 1);
 
             const int last = distribution_last(*m_engine);
 
-            for (size_t j = 0; j < m_parameters.individual_size; ++j)
+            for (size_t j = 0; j < m_parameters.optimization.individual_size; ++j)
             {
                 if (j < first || j > last)
                 {
@@ -508,29 +507,29 @@ namespace rpo
 
     void PlanGenerator::mutate()
     {
-        m_premutants = select(m_parameters.mutation_selection_type, m_parameters.number_of_mutations);
+        m_premutants = select(m_parameters.optimization.mutation_selection_type, m_parameters.optimization.num_mutations);
 
         std::uniform_real_distribution distribution(0.0, 1.0);
 
-        const double gene_mutation_probability = m_parameters.mutation_probability;
+        const double gene_mutation_probability = m_parameters.optimization.mutation_probability;
 
-        double deviation_x = m_parameters.space_mutation_parameter * (m_model_boundaries[1] - m_model_boundaries[0]);
+        double deviation_x = m_parameters.optimization.space_mutation * (m_model_boundaries[1] - m_model_boundaries[0]);
 
-        double deviation_y = m_parameters.space_mutation_parameter * (m_model_boundaries[3] - m_model_boundaries[2]);
+        double deviation_y = m_parameters.optimization.space_mutation * (m_model_boundaries[3] - m_model_boundaries[2]);
 
-        double deviation_t = m_parameters.time_mutation_parameter * m_parameters.disinfection_time / static_cast<double>(m_parameters.number_of_positions);
+        double deviation_t = m_parameters.optimization.time_mutation * m_parameters.optimization.disinfection_time / static_cast<double>(m_parameters.optimization.num_positions);
 
         for (size_t i = 0; i < m_premutants.size(); ++i)
         {
             std::vector<double> mutant = m_population[i].first;
 
-            for (size_t j = 0; j < m_parameters.individual_size; j += m_parameters.plan_element_size)
+            for (size_t j = 0; j < m_parameters.optimization.individual_size; j += m_parameters.optimization.element_size)
             {
                 if (distribution(*m_engine) < gene_mutation_probability)
                 {
                     double old_gene = mutant[j];
                     mutateGene(mutant[j], deviation_x);
-                    if (std::abs(mutant[j] - old_gene) < m_parameters.resolution)
+                    if (std::abs(mutant[j] - old_gene) < m_parameters.preprocessing.resolution)
                     {
                         mutant[j] = old_gene;
                     }
@@ -540,7 +539,7 @@ namespace rpo
                 {
                     double old_gene = mutant[j + 1];
                     mutateGene(mutant[j + 1], deviation_y);
-                    if (std::abs(mutant[j + 1] - old_gene) < m_parameters.resolution)
+                    if (std::abs(mutant[j + 1] - old_gene) < m_parameters.preprocessing.resolution)
                     {
                         mutant[j + 1] = old_gene;
                     } 
@@ -572,12 +571,12 @@ namespace rpo
 
     void PlanGenerator::mutateGene(double& gene, double deviation) const
     {
-        if (m_parameters.mutation_type == 1)
+        if (m_parameters.optimization.mutation_type == 1)
         {
             std::normal_distribution<double> normal_distribution(gene, deviation);
             gene = normal_distribution(*m_engine);
         }
-        else if (m_parameters.mutation_type == 2)
+        else if (m_parameters.optimization.mutation_type == 2)
         {
             std::uniform_real_distribution uniform_distribution(gene - deviation / 2.0, gene + deviation / 2.0);
             gene = uniform_distribution(*m_engine);

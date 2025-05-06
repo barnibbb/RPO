@@ -26,7 +26,7 @@ namespace rpo
     {
         std::ifstream file;
 
-        file.open(m_parameters.lamp_voxel_model_file);
+        file.open(m_parameters.paths.lamp_model);
 
         if (file.is_open())
         {
@@ -59,31 +59,29 @@ namespace rpo
     {
         OcTreeKey key;
 
-        const double resolution = m_parameters.resolution;
+        point3d base(x, y, m_ground_level + m_resolution);
 
-        point3d base(x, y, m_parameters.ground_level + resolution);
+        m_color_model->coordToKeyChecked(base, m_depth, key);
 
-        m_color_model->coordToKeyChecked(base, m_parameters.depth, key);
-
-        base = m_color_model->keyToCoord(key, m_parameters.depth);
+        base = m_color_model->keyToCoord(key, m_depth);
 
         for (const LampModelElement& element : m_lamp_model)
         {
             const point3d lamp_point = base + point3d(
-                element.x * resolution, 
-                element.y * resolution, 
-                element.z * resolution);
+                element.x * m_resolution, 
+                element.y * m_resolution, 
+                element.z * m_resolution);
             
             const ColorOcTreeNode::Color color = element.color ? 
                   ColorOcTreeNode::Color(RUBY_RED2) : 
                   ColorOcTreeNode::Color(80, 80, 80);
 
-            ColorOcTreeNode* node = m_color_model->search(lamp_point, m_parameters.depth);
+            ColorOcTreeNode* node = m_color_model->search(lamp_point, m_depth);
 
             if (node == nullptr)
             {
                 m_color_model->updateNode(lamp_point, true);
-                node = m_color_model->search(lamp_point, m_parameters.depth);
+                node = m_color_model->search(lamp_point, m_depth);
             }
 
             m_color_model->expandNode(node);
@@ -91,7 +89,7 @@ namespace rpo
 
             node->setColor(color);
 
-            m_color_model->coordToKeyChecked(lamp_point, m_parameters.depth, key);
+            m_color_model->coordToKeyChecked(lamp_point, m_depth, key);
 
             m_placed_lamps.insert(key);
         }
@@ -104,13 +102,13 @@ namespace rpo
 
     void ROSVisualizer::placeLamp2(double x, double y)
     {
-        point3d center(x, y, m_parameters.ground_level);
+        point3d center(x, y, m_ground_level);
 
         for (int x = -2; x < 3; ++x)
         {
             for (int y = -2; y < 3; ++y)
             {   
-                point3d point = center + point3d(x * m_parameters.resolution, y * m_parameters.resolution, 0);
+                point3d point = center + point3d(x * m_resolution, y * m_resolution, 0);
 
                 ColorOcTreeNode* color_node = m_color_model->search(point);
 
@@ -127,11 +125,11 @@ namespace rpo
     {
         for (const auto& key : m_placed_lamps)
         {
-            ColorOcTreeNode* node = m_color_model->search(key, m_parameters.depth);
+            ColorOcTreeNode* node = m_color_model->search(key, m_depth);
 
             if (node != nullptr)
             {
-                m_color_model->deleteNode(key, m_parameters.depth);
+                m_color_model->deleteNode(key, m_depth);
             }
         }
     }
@@ -146,7 +144,7 @@ namespace rpo
 
         for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
         {
-            NodePtr node = m_augmented_model->search(it.getKey(), m_parameters.depth);
+            NodePtr node = m_augmented_model->search(it.getKey(), m_depth);
 
             if (node != nullptr && node->getType() == 3)
             {
@@ -156,8 +154,8 @@ namespace rpo
 
         for (const auto& key : points_to_delete)
         {
-            m_augmented_model->deleteNode(key, m_parameters.depth);
-            m_color_model->deleteNode(key, m_parameters.depth);
+            m_augmented_model->deleteNode(key, m_depth);
+            m_color_model->deleteNode(key, m_depth);
         }
     
         std::cout << "After cut: " << m_augmented_model->getNumLeafNodes() << std::endl;
@@ -170,9 +168,9 @@ namespace rpo
         
         for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
         {
-            NodePtr node = m_augmented_model->search(it.getKey(), m_parameters.depth);
+            NodePtr node = m_augmented_model->search(it.getKey(), m_depth);
 
-            if (node != nullptr && it.getCoordinate().z() < m_parameters.ground_level - 0.5)
+            if (node != nullptr && it.getCoordinate().z() < m_ground_level - 0.5)
             {
                 ColorOcTreeNode* cnode = m_color_model->updateNode(it.getKey(), true);
             }
@@ -183,9 +181,9 @@ namespace rpo
 
         for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
         {
-            NodePtr node = m_augmented_model->search(it.getKey(), m_parameters.depth);
+            NodePtr node = m_augmented_model->search(it.getKey(), m_depth);
 
-            if (node != nullptr && it.getCoordinate().z() < m_parameters.ground_level - 0.5)
+            if (node != nullptr && it.getCoordinate().z() < m_ground_level - 0.5)
             {
                 points_to_delete.insert(it.getKey());
             }
@@ -193,8 +191,8 @@ namespace rpo
 
         for (const auto& key : points_to_delete)
         {
-            m_augmented_model->deleteNode(key, m_parameters.depth);
-            // m_color_model->deleteNode(key, m_parameters.depth);
+            m_augmented_model->deleteNode(key, m_depth);
+            // m_color_model->deleteNode(key, m_depth);
         }
     }
 
@@ -222,12 +220,12 @@ namespace rpo
 
         for (const auto& key : points_to_delete)
         {
-            NodePtr node = m_augmented_model->search(key, m_parameters.depth); 
+            NodePtr node = m_augmented_model->search(key, m_depth); 
 
             if (node != nullptr)
             {
-                m_augmented_model->deleteNode(key, m_parameters.depth);
-                m_color_model->deleteNode(key, m_parameters.depth);
+                m_augmented_model->deleteNode(key, m_depth);
+                m_color_model->deleteNode(key, m_depth);
             }
         }
 
@@ -243,7 +241,7 @@ namespace rpo
     {
         for (ColorOcTree::leaf_iterator it = m_color_model->begin_leafs(), end = m_color_model->end_leafs(); it != end; ++it)
         {
-            if (ColorOcTreeNode* node = m_color_model->search(it.getKey(), m_parameters.depth); node != nullptr)
+            if (ColorOcTreeNode* node = m_color_model->search(it.getKey(), m_depth); node != nullptr)
             {
                 if (m_optimization_elements.find(it.getKey()) != m_optimization_elements.end())
                 {
@@ -313,13 +311,13 @@ namespace rpo
         
         for (const auto& grid_element : m_grid_elements)
         {
-            point3d center = m_color_model->keyToCoord(grid_element, m_parameters.depth);
+            point3d center = m_color_model->keyToCoord(grid_element, m_depth);
 
             for (int x = -2; x < 3; ++x)
             {
                 for (int y = -2; y < 3; ++y)
                 {   
-                    point3d point = center + point3d(x * m_parameters.resolution, y * m_parameters.resolution, 0);
+                    point3d point = center + point3d(x * m_resolution, y * m_resolution, 0);
 
                     ColorOcTreeNode* color_node = m_color_model->search(point);
 
@@ -342,13 +340,13 @@ namespace rpo
 
             if (m_placed_lamps.find(key) == m_placed_lamps.end())
             {
-                if (ColorOcTreeNode* node = m_color_model->search(key, m_parameters.depth); node != nullptr)
+                if (ColorOcTreeNode* node = m_color_model->search(key, m_depth); node != nullptr)
                 {
                     if (dose_map.find(key) != dose_map.end())
                     {
                         const double exposure = dose_map[key];
 
-                        if (exposure >= m_parameters.exposure_limit)
+                        if (exposure >= m_parameters.computation.exposure_limit)
                         {
                             node->setColor(static_cast<int>(255 * R[255]), static_cast<int>(255 * G[255]), static_cast<int>(255 * B[255]));
                             // node->setColor(255, 255, 0);
@@ -362,7 +360,7 @@ namespace rpo
                             }
                             else
                             {
-                                const int scale = static_cast<int>(round(255 * exposure / m_parameters.exposure_limit));
+                                const int scale = static_cast<int>(round(255 * exposure / m_parameters.computation.exposure_limit));
 
                                 node->setColor(static_cast<int>(255 * R[scale]), static_cast<int>(255 * G[scale]), static_cast<int>(255 * B[scale]));
 
@@ -387,20 +385,20 @@ namespace rpo
 
     Score ROSVisualizer::showResult(const RadiationPlan& radiation_plan, bool verify)
     {
-        int computation_type = m_parameters.computation_type;
+        int computation_type = m_parameters.computation.type;
 
         if (verify)
         {
-            m_parameters.computation_type = 7;
+            m_parameters.computation.type = 7;
         }
 
-        const int element_size = m_parameters.plan_element_size;
+        const int element_size = m_parameters.optimization.element_size;
 
         std::vector<double> elements = radiation_plan.first;
 
         std::vector<ExposureMap> exposure_maps(radiation_plan.first.size() / 3);
 
-        const double z = m_parameters.lamp_center;
+        const double z = m_parameters.lamp.center;
 
         #pragma omp parallel for
         for (int i = 0; i < elements.size(); i += element_size)
@@ -412,10 +410,10 @@ namespace rpo
             exposure_maps[i / element_size] = computeDoseForPlanElement(plan_element, verify);
         }
 
-        // for (int i = 0; i < elements.size(); i += element_size)
-        // {
-        //     placeLamp(elements[i], elements[i + 1]);
-        // }
+        for (int i = 0; i < elements.size(); i += element_size)
+        {
+            placeLamp(elements[i], elements[i + 1]);
+        }
 
         int general_over = 0, object_over = 0, object_sum = m_object_elements.size();
 
@@ -437,20 +435,20 @@ namespace rpo
             }
 
 
-            if (exposure_map[element] >= m_parameters.exposure_limit)
+            if (exposure_map[element] >= m_parameters.computation.exposure_limit)
             {
                 general_over += 1;
             }
 
 
-            NodePtr node = m_augmented_model->search(element, m_parameters.depth);
+            NodePtr node = m_augmented_model->search(element, m_depth);
 
             if (node != nullptr && node->getType() == 5)
             {
                 if ((!verify && (m_optimization_elements.find(element) != m_optimization_elements.end())) ||
                     ( verify && (m_verification_elements.find(element) != m_verification_elements.end())))
                 {
-                    if (exposure_map[element] >= m_parameters.exposure_limit)
+                    if (exposure_map[element] >= m_parameters.computation.exposure_limit)
                     {
                         object_over += 1;
                     }
@@ -481,9 +479,9 @@ namespace rpo
 
         publish();
 
-        //deleteLamps();
+        deleteLamps();
 
-        m_parameters.computation_type = computation_type;
+        m_parameters.computation.type = computation_type;
     
         return score;
     }

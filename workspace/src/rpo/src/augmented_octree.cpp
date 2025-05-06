@@ -1095,6 +1095,8 @@ namespace rpo
 
     void AugmentedOcTree::findObjects(bool surface)
     {
+        std::cout << "Find objects ... " << std::endl;
+
         this->calcMinMax();
 
         const float resolution = this->resolution;
@@ -1201,7 +1203,7 @@ namespace rpo
         }
 
         ros::NodeHandle node_handle;
-        ros::Publisher publisher = node_handle.advertise<octomap_msgs::Octomap>("/segmented_map", 10);
+        ros::Publisher publisher = node_handle.advertise<octomap_msgs::Octomap>("/segmented_map", 1);
 
         octomap_msgs::Octomap message;
 
