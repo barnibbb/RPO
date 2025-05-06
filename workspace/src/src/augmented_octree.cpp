@@ -9,7 +9,7 @@ namespace rpo
     {
         s.read((char*) &value, sizeof(value));
         s.read((char*) &m_normal, sizeof(point3d));
-        s.read((char*) &m_dose, sizeof(double))
+        s.read((char*) &m_dose, sizeof(double));
         s.read((char*) &m_type, sizeof(int));
 
         return s;
@@ -1181,19 +1181,19 @@ namespace rpo
             switch (node->getType())
             {
             case 1: // General
-                color_node->setColor(GOLD); ++t1;
+                color_node->setColor(GOLD);
                 break;
             case 2: // Ground
-                color_node->setColor(GREEN); ++t2;
+                color_node->setColor(GREEN);
                 break;
             case 3: // Underground
-                color_node->setColor(BLACK); ++t3;
+                color_node->setColor(BLACK);
                 break;
             case 4: // Wall
-                color_node->setColor(CRIMSON_RED); ++t4;
+                color_node->setColor(CRIMSON_RED);
                 break;
             case 5: // Object
-                color_node->setColor(SAPPHIRE_BLUE); ++t5;
+                color_node->setColor(SAPPHIRE_BLUE);
                 break;
             default:
                 break;
