@@ -1,6 +1,8 @@
 [//]: # (Image References)
 
 [image1]: ./assets/fig_system.png "system"
+[image2]: ./assets/fig_1a.png "1a"
+[image3]: ./assets/fig_1b.png "1b"
 
 # RPO - Radiation Plan Optimization for UV Disinfection Robots
 
@@ -51,6 +53,14 @@ roslaunch rpo rviz.launch
 These codes are related to our paper **Optimal UV Disinfection Plan Generation with Minimum Number of Radiation Positions** submitted to Robotics and Autononomus Systems.
 
 ![image1]
+
+## Experimental results
+
+Disinfection coverages with only 0.38\% difference provided by 95 evenly distributed light source locations with equal proportions of the overall radiation time (left) and by the plan optimized with the proposed method containing only 5 radiation positions (right). The exposure level is expressed by the Viridis color scale with brighter values corresponding to a higher radiant dose, while the lamp locations are denoted by red squares. As can be seen, the optimized plan, albeit being much simpler, can yield almost identical results.
+
+| 95 positions | 5 positions |
+|:-------:|:-------:|
+| ![image2] | ![image3] |
 
 ## Notes
 
