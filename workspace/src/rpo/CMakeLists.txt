@@ -46,6 +46,22 @@ target_link_libraries(Augmentation
   ${catkin_LIBRARIES}
 )
 
+add_executable(KnownPlan
+  test/known_plan.cpp
+  src/plan_generator.cpp
+  src/ros_visualizer.cpp
+  src/dose_calculator.cpp
+  src/augmented_octree.cpp
+  src/parameters.cpp
+)
+
+target_link_libraries(KnownPlan
+  ${catkin_LIBRARIES}
+  OpenMP::OpenMP_CXX
+  yaml-cpp
+)
+
+
 add_executable(RPO
   src/main.cpp
   src/plan_generator.cpp

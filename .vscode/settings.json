@@ -50,6 +50,9 @@
         "deque": "cpp",
         "numbers": "cpp",
         "streambuf": "cpp",
-        "system_error": "cpp"
+        "system_error": "cpp",
+        "cstring": "cpp",
+        "complex": "cpp",
+        "sstream": "cpp"
     }
 }

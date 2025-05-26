@@ -66,6 +66,16 @@ RUN apt-get update && \
     gdb\
     lsb-release\
     sudo
+
+# python install
+USER root
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive\
+    apt-get install -y\
+    python3 \
+    python3-pip \
+    python3-dev 
+
     
 #install ROS http://wiki.ros.org/noetic/Installation/Ubuntu
 RUN rm -rf /var/lib/apt/lists/*
@@ -75,6 +85,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive\
     apt-get install -y\
     ros-noetic-desktop-full
+
 #install ROS tools
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive\
@@ -98,5 +109,13 @@ RUN rosdep update
 #ros sourcing
 RUN echo "source /opt/ros/noetic/setup.bash" >> /home/appuser/.bashrc
 
+USER root
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive\
+    apt-get install -y\
+    coinor-cbc
+
+
 #switching back to appuser, so tha container starts there
 USER appuser
+RUN pip install pulp numpy
