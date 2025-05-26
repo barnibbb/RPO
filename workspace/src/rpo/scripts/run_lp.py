@@ -55,6 +55,8 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     t = [pulp.LpVariable(f"t_{j}", lowBound=0) for j in range(n_positions)]
     z = [pulp.LpVariable(f"z_{i}", cat='Binary') for i in range(n_voxels)]
     # z = [pulp.LpVariable(f"z_{i}", lowBound=0, upBound=1, cat="Continuous") for i in range(n_voxels)]
+    u = [pulp.LpVariable(f"u_{j}", cat='Binary') for j in range(n_positions)] # Num pos minimization
+    
 
 
     # Constraints
@@ -65,8 +67,24 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     # Total radiation time limit
     prob += pulp.lpSum(t) <= time_budget
 
+    # Num pos minimization
+    M = time_budget
+
+    for j in range(n_positions):
+        prob += (t[j] <= M * u[j])
+
+
     # Objective
-    prob += pulp.lpSum(z)
+    # prob += pulp.lpSum(z)
+
+    # Objective with minimization
+    penalty_weight = 1000.0
+    prob += pulp.lpSum(z[i] for i in range(n_voxels)) - penalty_weight * pulp.lpSum(u[j] for j in range(n_positions))
+
+    # Maximize lamp count
+    # max_active_lamps = 10  # Set your limit here
+    # Optional: limit the number of used lamps
+    # prob += pulp.lpSum(u[j] for j in range(n_positions)) <= max_active_lamps
 
     # Solve
     print("Run solver")
