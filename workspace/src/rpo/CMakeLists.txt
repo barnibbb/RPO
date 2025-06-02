@@ -79,6 +79,29 @@ set_target_properties(GPU_DDA PROPERTIES
 )
 
 
+# GPU irradiance calculation
+add_executable(GPU_Irradiance
+  src/gpu_ray_tracing.cu
+  src/ros_visualizer.cpp
+  src/dose_calculator.cpp
+  src/augmented_octree.cpp
+  src/parameters.cpp
+)
+
+target_link_libraries(GPU_Irradiance
+  ${catkin_LIBRARIES}
+  yaml-cpp
+)
+
+set_target_properties(GPU_Irradiance PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+
+
+
+
+
 # Compute coverage for known plan
 add_executable(KnownPlan
   test/known_plan.cpp

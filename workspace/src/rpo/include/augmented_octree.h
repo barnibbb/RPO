@@ -233,6 +233,9 @@ namespace rpo
         void visualize();
 
         std::array<double, 6> getBoundaries() const;
+
+        std::vector<int> convertToOccupancyGrid() const;
+
         
 
     protected:

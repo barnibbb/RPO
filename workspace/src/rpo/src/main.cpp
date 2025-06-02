@@ -81,10 +81,8 @@ int main (int argc, char** argv)
     std::chrono::seconds precomp_time;
 
 
-    if (parameters.computation.filter)
-    {
-        visualizer.filter();
-    }
+    // Cut random elements on lab model
+    // visualizer.filter();
     
 
     // Get irradiance maps ---------------------------------------------------------
