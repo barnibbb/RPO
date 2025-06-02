@@ -78,18 +78,19 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     # prob += pulp.lpSum(z)
 
     # Objective with minimization
-    penalty_weight = 1000.0
+    penalty_weight = 1500.0
     prob += pulp.lpSum(z[i] for i in range(n_voxels)) - penalty_weight * pulp.lpSum(u[j] for j in range(n_positions))
 
     # Maximize lamp count
-    # max_active_lamps = 10  # Set your limit here
+    # max_active_lamps = 50  # Set your limit here
     # Optional: limit the number of used lamps
     # prob += pulp.lpSum(u[j] for j in range(n_positions)) <= max_active_lamps
 
     # Solve
     print("Run solver")
 
-    solver = pulp.COIN_CMD(timeLimit=3600)
+    solver = pulp.COIN_CMD(timeLimit=7200)
+    # solver = pulp.COIN_CMD()
 
     prob.solve(solver)
 

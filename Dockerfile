@@ -116,6 +116,7 @@ RUN apt-get update && \
     coinor-cbc
 
 
-#switching back to appuser, so tha container starts there
+# switching back to appuser, so tha container starts there
 USER appuser
-RUN pip install pulp numpy
+RUN pip install pulp numpy cupy-cuda11x
+

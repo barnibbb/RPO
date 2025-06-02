@@ -1,5 +1,8 @@
-cmake_minimum_required(VERSION 3.10.2)
-project(rpo)
+cmake_minimum_required(VERSION 3.16)
+project(rpo LANGUAGES CXX CUDA)
+
+set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,6 +30,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+
+# Parameter test
 add_executable(Parameters
   test/parameter_test.cpp
   src/parameters.cpp
@@ -37,6 +42,8 @@ target_link_libraries(Parameters
   yaml-cpp
 )
 
+
+# Augmentation test
 add_executable(Augmentation
   test/augmentation_test.cpp
   src/augmented_octree.cpp
@@ -46,6 +53,33 @@ target_link_libraries(Augmentation
   ${catkin_LIBRARIES}
 )
 
+
+# CPU Digital Differential Analysis ray tracing
+add_executable(CPU_DDA
+  dev/src/dda_ray_tracing_cpu.cpp
+)
+
+target_link_libraries(CPU_DDA
+  ${catkin_LIBRARIES}
+  OpenMP::OpenMP_CXX
+)
+
+
+# GPU Digital Differential Analysis ray tracing
+add_executable(GPU_DDA
+  dev/src/dda_ray_tracing_gpu.cu
+)
+
+target_link_libraries(GPU_DDA
+  ${catkin_LIBRARIES}
+)
+
+set_target_properties(GPU_DDA PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
+
+
+# Compute coverage for known plan
 add_executable(KnownPlan
   test/known_plan.cpp
   src/plan_generator.cpp
@@ -62,6 +96,7 @@ target_link_libraries(KnownPlan
 )
 
 
+# Run GA based optimization
 add_executable(RPO
   src/main.cpp
   src/plan_generator.cpp
