@@ -1243,36 +1243,4 @@ namespace rpo
 
         return boundaries;
     }
-
-
-    std::vector<int> AugmentedOcTree::convertToOccupancyGrid() const
-    {
-        float resolution = this->resolution;
-
-        std::array<double, 6> boundaries = this->getBoundaries();
-
-        int dim_x = std::ceil((boundaries[1] - boundaries[0]) / resolution);
-        int dim_y = std::ceil((boundaries[3] - boundaries[2]) / resolution);
-        int dim_z = std::ceil((boundaries[5] - boundaries[4]) / resolution);
-
-        std::vector<int> occupancy_grid(dim_x * dim_y * dim_z, 0);
-
-        for (rpo::AugmentedOcTree::leaf_iterator it = this->begin_leafs(), end = this->end_leafs(); it != end; ++it)
-        {
-            if (this->isNodeOccupied(*it))
-            {
-                octomap::point3d coord = it.getCoordinate();
-                int x = static_cast<int>((coord.x() - boundaries[0]) / resolution);
-                int y = static_cast<int>((coord.y() - boundaries[2]) / resolution);
-                int z = static_cast<int>((coord.z() - boundaries[4]) / resolution);
-                occupancy_grid[x + y * dim_x + z * dim_x * dim_y] = 1;
-            }
-        }
-
-        return occupancy_grid;
-    }
-
-
-
-
 }

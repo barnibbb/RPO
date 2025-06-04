@@ -27,6 +27,7 @@ namespace rpo
         void computeGroundZone();
         void computeGridElements();
         void computeRayTargets();
+        std::vector<double> getRayTargets() const;
         std::multimap<double, double> getGroundZone() const;
         RadiationPlan getGrid(const RadiationPlan& plan) const;
         std::vector<OcTreeKey> getGridElements() const;
@@ -62,6 +63,8 @@ namespace rpo
         
         // New functions
         void computeGeneralVisibility();
+
+        KeySet getBaseReachableElements() const;
 
         void computeBreakPoints();
 

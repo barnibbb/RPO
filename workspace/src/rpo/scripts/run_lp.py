@@ -75,11 +75,11 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
 
 
     # Objective
-    # prob += pulp.lpSum(z)
+    prob += pulp.lpSum(z)
 
     # Objective with minimization
-    penalty_weight = 1500.0
-    prob += pulp.lpSum(z[i] for i in range(n_voxels)) - penalty_weight * pulp.lpSum(u[j] for j in range(n_positions))
+    #penalty_weight = 1500.0
+    #prob += pulp.lpSum(z[i] for i in range(n_voxels)) - penalty_weight * pulp.lpSum(u[j] for j in range(n_positions))
 
     # Maximize lamp count
     # max_active_lamps = 50  # Set your limit here
@@ -89,7 +89,7 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     # Solve
     print("Run solver")
 
-    solver = pulp.COIN_CMD(timeLimit=7200)
+    solver = pulp.COIN_CMD(timeLimit=900)
     # solver = pulp.COIN_CMD()
 
     prob.solve(solver)
@@ -113,6 +113,7 @@ def verify(dose_matrix, radiation_times, dose_threshold, time_budget):
 
     print(f"Total elements: {len(doses)}")
     print(f"Covered elements: {num_covered}")
+    print(f"Percentage: {float(num_covered) / float(len(doses))}")
     print(f"Total radiation time used: {total_time:.2f} seconds (budget: {time_budget})")
 
 

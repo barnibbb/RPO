@@ -234,9 +234,9 @@ namespace rpo
 
         std::array<double, 6> getBoundaries() const;
 
-        std::vector<int> convertToOccupancyGrid() const;
 
-        
+
+
 
     protected:
         void updateInnerOccupancyRecurs(AugmentedOcTreeNode* node, unsigned int depth);

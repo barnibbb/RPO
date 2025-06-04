@@ -306,6 +306,14 @@ namespace rpo
 
 
 
+    std::vector<double> DoseCalculator::getRayTargets() const
+    {
+        return m_ray_targets;
+    }
+
+
+
+
     std::multimap<double, double> DoseCalculator::getGroundZone() const
     {
         std::multimap<double, double> ground_zone;
@@ -1601,6 +1609,11 @@ namespace rpo
         std::cout << "Filter: " << m_base_reachable_elements.size() << std::endl;
     }
 
+
+    KeySet DoseCalculator::getBaseReachableElements() const
+    {
+        return m_base_reachable_elements;
+    }
 
 
 
