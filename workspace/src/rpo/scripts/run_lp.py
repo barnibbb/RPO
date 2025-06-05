@@ -29,6 +29,7 @@ def load_all_maps(folder_path):
 
     for file in position_files:
         irr_map = read_map(os.path.join(folder_path, file))
+        print(f"{file}\t{len(irr_map)}")
         irradiance_data.append(irr_map)
         all_keys.update(irr_map.keys())
 
@@ -89,7 +90,7 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     # Solve
     print("Run solver")
 
-    solver = pulp.COIN_CMD(timeLimit=900)
+    solver = pulp.COIN_CMD(timeLimit=1800)
     # solver = pulp.COIN_CMD()
 
     prob.solve(solver)
@@ -129,7 +130,7 @@ if __name__ == '__main__':
 
     dose_matrix, key_index, files = load_all_maps(folder_path)
 
-    print(dose_matrix.shape)
+    # print(dose_matrix.shape)
 
     radiation_times, covered_voxels = solve_irradiance_lp(dose_matrix, dose_threshold, time_budget)
 

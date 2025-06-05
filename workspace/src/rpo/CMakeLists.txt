@@ -75,12 +75,13 @@ target_link_libraries(GPU_DDA
 )
 
 set_target_properties(GPU_DDA PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
+  CUDA_SEPARABLE_COMPILATION ON
 )
 
 
 # GPU irradiance calculation
 add_executable(GPU_Irradiance
+  src/compute_maps.cpp
   src/gpu_ray_tracing.cu
   src/ros_visualizer.cpp
   src/dose_calculator.cpp
@@ -90,11 +91,12 @@ add_executable(GPU_Irradiance
 
 target_link_libraries(GPU_Irradiance
   ${catkin_LIBRARIES}
+  OpenMP::OpenMP_CXX
   yaml-cpp
 )
 
 set_target_properties(GPU_Irradiance PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
+  CUDA_SEPARABLE_COMPILATION ON
 )
 
 

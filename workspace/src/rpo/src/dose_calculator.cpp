@@ -375,6 +375,13 @@ namespace rpo
 
 
 
+    double DoseCalculator::getGroundLevel() const
+    {
+        return m_ground_level;
+    }
+
+
+
     void DoseCalculator::computeIrradianceMaps()
     {
         if (m_parameters.computation.filter)

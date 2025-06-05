@@ -31,6 +31,7 @@ namespace rpo
         std::multimap<double, double> getGroundZone() const;
         RadiationPlan getGrid(const RadiationPlan& plan) const;
         std::vector<OcTreeKey> getGridElements() const;
+        double getGroundLevel() const;
 
         // Irradiance maps
         void computeIrradianceMaps();

@@ -78,7 +78,7 @@ int main (int argc, char** argv)
     visualizer.computeGridElements();
     visualizer.computeRayTargets();
 
-    std::chrono::seconds precomp_time;
+    std::chrono::milliseconds precomp_time;
 
 
     // Cut random elements on lab model
@@ -94,7 +94,7 @@ int main (int argc, char** argv)
         
         auto stop_precomputation = std::chrono::high_resolution_clock::now();
     
-        precomp_time = std::chrono::duration_cast<std::chrono::seconds>(stop_precomputation - start_precomputation);
+        precomp_time = std::chrono::duration_cast<std::chrono::milliseconds>(stop_precomputation - start_precomputation);
 
         std::cout << "Precomputation time: " << precomp_time.count() << std::endl;
     }

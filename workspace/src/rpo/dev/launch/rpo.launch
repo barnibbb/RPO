@@ -1,4 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <node name="rpo" pkg="rpo" type="RPO" args="/home/barni/rpo_ws/src/rpo/experiments/test/params_30.txt" output="screen"/>
+  <arg name="param_file" default="/home/appuser/data/params.yaml"/>
+
+  <node pkg="rpo" type="GPU_Irradiance" name="GPU_Irradiance" output="screen" args="$(arg param_file)"/>
 </launch>

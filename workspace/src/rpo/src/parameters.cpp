@@ -15,7 +15,7 @@ namespace rpo
         parameters.paths.augmented_model = parameters.paths.workspace + params["paths"]["augmented_model"].as<std::string>();
         parameters.paths.color_model     = parameters.paths.workspace + params["paths"]["color_model"].as<std::string>();
         parameters.paths.lamp_model      = parameters.paths.workspace + params["paths"]["lamp_model"].as<std::string>();
-        parameters.paths.irradiance_maps = parameters.paths.workspace + "/irradiance_maps/";
+        parameters.paths.irradiance_maps = parameters.paths.workspace + "/irradiance/";
         parameters.paths.short_report    = parameters.paths.workspace + "/short_report.txt";
         parameters.paths.long_report     = parameters.paths.workspace + "/long_report.txt";
 
