@@ -67,3 +67,4 @@ Disinfection coverages with only 0.38\% difference provided by 95 evenly distrib
 - Augmented models require regeneration when new features are assigned to cells.
 - Parameter names might be updated later + description.
 - Frequently used parameters might be set as independent variables.
+- Gurobi optimization should be run outside the container. It requires academic license in the form of gurobi.lic file and gurobipy installed.
