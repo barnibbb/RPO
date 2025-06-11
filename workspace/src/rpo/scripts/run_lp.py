@@ -29,7 +29,7 @@ def load_all_maps(folder_path):
 
     for file in position_files:
         irr_map = read_map(os.path.join(folder_path, file))
-        print(f"{file}\t{len(irr_map)}")
+        # print(f"{file}\t{len(irr_map)}")
         irradiance_data.append(irr_map)
         all_keys.update(irr_map.keys())
 
@@ -61,16 +61,20 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
 
 
     # Constraints
+    print("Adding dose constraints ...")
     for i in range(n_voxels):
+        # print(f"{i}/{n_voxels} voxel")
         dose_expr = pulp.lpSum(dose_matrix[i][j] * t[j] for j in range(n_positions))
         prob += (dose_expr >= dose_threshold * z[i])
 
     # Total radiation time limit
+    print("Adding radiation time limit ...")
     prob += pulp.lpSum(t) <= time_budget
 
     # Num pos minimization
     M = time_budget
 
+    print("Adding binary variables for position selection ...")
     for j in range(n_positions):
         prob += (t[j] <= M * u[j])
 
@@ -79,8 +83,8 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     prob += pulp.lpSum(z)
 
     # Objective with minimization
-    #penalty_weight = 1500.0
-    #prob += pulp.lpSum(z[i] for i in range(n_voxels)) - penalty_weight * pulp.lpSum(u[j] for j in range(n_positions))
+    # penalty_weight = 100.0
+    # prob += pulp.lpSum(z[i] for i in range(n_voxels)) - penalty_weight * pulp.lpSum(u[j] for j in range(n_positions))
 
     # Maximize lamp count
     # max_active_lamps = 50  # Set your limit here
@@ -123,14 +127,14 @@ def verify(dose_matrix, radiation_times, dose_threshold, time_budget):
 
 if __name__ == '__main__':
 
-    folder_path = '/home/appuser/data/irradiance_maps'
+    folder_path = '/home/appuser/data/irradiance_office'
 
     dose_threshold = 280.0
-    time_budget = 1800.0
+    time_budget = 7200.0
 
     dose_matrix, key_index, files = load_all_maps(folder_path)
 
-    # print(dose_matrix.shape)
+    print(dose_matrix.shape)
 
     radiation_times, covered_voxels = solve_irradiance_lp(dose_matrix, dose_threshold, time_budget)
 

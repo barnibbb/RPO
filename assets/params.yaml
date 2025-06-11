@@ -1,0 +1,49 @@
+paths:
+  workspace: /home/appuser/data/
+  augmented_model: models/infirmary_augmented.ot
+  color_model: models/infirmary_color.ot
+  lamp_model: models/lamp_model.csv
+  irradiance_maps: irradiance_infirmary/
+
+preprocessing:
+  depth: 16
+  resolution: 0.05
+  safety_radius: 0.3
+
+lamp_attributes:
+  height: 1.2
+  offset: 0.37
+  power: 80
+  range: 20
+
+dose_computation:
+  type: 7
+  exposure_limit: 280
+  target_coverage: 0.8
+  grid_distance: 10
+  load_maps: false
+  save_maps: true
+  store_maps: true
+  semantic: false
+  filter: true
+
+optimization:
+  start_positions: 1
+  end_positions: 10000
+  element_size: 3
+  max_generations: 10
+  population_size: 30
+  num_crossovers: 15
+  num_mutations: 15
+  crossover_type: 1
+  mutation_type: 2
+  crossover_selection_type: 1
+  mutation_selection_type: 1
+  survival_selection_type: 4
+  mutation_probability: 0.5
+  space_mutation: 0.4
+  time_mutation: 0.4
+  disinfection_time: 1800
+  increment: 0.00001
+  condition: true
+  verify: false
