@@ -11,7 +11,7 @@ int main(int argc, char** argv)
     // --- Read input parameters ---
     if (argc < 2)
     {
-        std::cerr << "Usage: rosrun rpo GPU_Irradiance <parameter_file>" << std::endl;
+        std::cerr << "Usage: rosrun rpo CeilingLamp <parameter_file>" << std::endl;
         return -1;
     }
 

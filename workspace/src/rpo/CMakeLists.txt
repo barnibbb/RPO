@@ -122,7 +122,17 @@ set_target_properties(CeilingLamp PROPERTIES
 
 
 
+# Split model
+add_executable(SplitModel
+  dev/src/split_model.cpp
+  src/augmented_octree.cpp
+  src/parameters.cpp
+)
 
+target_link_libraries(SplitModel
+  ${catkin_LIBRARIES}
+  yaml-cpp
+)
 
 
 # Compute coverage for known plan

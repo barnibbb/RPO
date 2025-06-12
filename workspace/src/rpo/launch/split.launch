@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="param_file" default="/home/appuser/data/params.yaml"/>
+
+  <node pkg="rpo" type="SplitModel" name="SplitModel" output="screen" args="$(arg param_file)"/>
+</launch>

@@ -3,6 +3,7 @@
 [image1]: ./assets/fig_system.png "system"
 [image2]: ./assets/fig_1a.png "1a"
 [image3]: ./assets/fig_1b.png "1b"
+<!-- [image4]: ./assets/split_model.png "split" -->
 
 # RPO - Radiation Plan Optimization for UV Disinfection Robots
 
@@ -61,6 +62,12 @@ Disinfection coverages with only 0.38\% difference provided by 95 evenly distrib
 | 95 positions | 5 positions |
 |:-------:|:-------:|
 | ![image2] | ![image3] |
+
+<!-- ## Splitting models
+
+Splitting model to horizontal, vertical and general surfaces. Might be good for task decomposition.
+
+![image4] -->
 
 ## Notes
 
