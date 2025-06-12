@@ -100,6 +100,27 @@ set_target_properties(GPU_Irradiance PROPERTIES
 )
 
 
+# Ceiling lamp
+add_executable(CeilingLamp
+  src/ceiling_lamp.cpp
+  src/gpu_ray_tracing.cu
+  src/ros_visualizer.cpp
+  src/dose_calculator.cpp
+  src/augmented_octree.cpp
+  src/parameters.cpp
+)
+
+target_link_libraries(CeilingLamp
+  ${catkin_LIBRARIES}
+  OpenMP::OpenMP_CXX
+  yaml-cpp
+)
+
+set_target_properties(CeilingLamp PROPERTIES
+  CUDA_SEPARABLE_COMPILATION ON
+)
+
+
 
 
 

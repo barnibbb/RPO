@@ -8,8 +8,6 @@
 
 int main(int argc, char** argv)
 {
-    auto start = std::chrono::high_resolution_clock::now();
-
     // --- Read input parameters ---
     if (argc < 2)
     {
@@ -66,14 +64,10 @@ int main(int argc, char** argv)
     assert(autmented_model->getNumLeafNodes() < 1'000);
 
 
-
-
-
     // --- Visualizer initialization ---
-    ros::init(argc, argv, "gpu_irradiance");
+    ros::init(argc, argv, "ceiling_lamp");
 
     rpo::ROSVisualizer visualizer(augmented_model, color_model, parameters);
-
 
 
     // --- Preprocessing ---
@@ -82,7 +76,6 @@ int main(int argc, char** argv)
     visualizer.computeGridElements();
     visualizer.computeRayTargets();
     visualizer.computeGeneralVisibility();
-
 
 
     // --- Generating occupancy grid ---
@@ -118,7 +111,6 @@ int main(int argc, char** argv)
     std::cout << "Occupancy grid elements: " << counter << "\n";
 
 
-
     // --- Setup origins ---
     KeySet origin_keys = visualizer.getBaseReachableElements();
     std::vector<float> origins;
@@ -136,27 +128,11 @@ int main(int argc, char** argv)
 
 
     // --- Setup targets ---
-    std::vector<octomap::OcTreeKey> grid_elements = visualizer.getGridElements();
-    std::vector<double> ray_targets = visualizer.getRayTargets();
-    std::vector<float> targets;
+    std::vector<float> targets(3);
 
-    float lamp_x, lamp_y;
-
-
-    for (size_t i = 0; i < grid_elements.size(); ++i)
-    {
-        octomap::point3d pt = augmented_model->keyToCoord(grid_elements[i], augmented_model->getTreeDepth());
-
-        lamp_x = pt.x();
-        lamp_y = pt.y();
-
-        for (size_t j = 1; j < ray_targets.size() - 1; ++j)
-        {
-            targets.push_back(pt.x());
-            targets.push_back(pt.y());
-            targets.push_back(ray_targets[j]);
-        }
-    }
+    targets[0] = 0.025;
+    targets[1] = 0.025;
+    targets[2] = boundaries[5] - 0.075;    
 
     std::cout << "Target elements: " << targets.size() << "\n";
 
@@ -178,15 +154,11 @@ int main(int argc, char** argv)
     std::cout << "Ray tracing time: " << dur_rt.count() << std::endl;
 
 
-    
-    // Irradiance computation
-    const float L = resolution;
-    const float coefficient = parameters.lamp.power / (4 * M_PI * parameters.lamp.height);
-    const float ground_level = visualizer.getGroundLevel();
-    const int num_lamps = grid_elements.size();
-    const int lamp_elements = ray_targets.size() - 2;
-    const double base_coverage = (((parameters.lamp.height + parameters.lamp.offset) / parameters.lamp.height)) * parameters.preprocessing.safety_radius;
 
+    // Irradiance computation
+    const float ground_level = visualizer.getGroundLevel();
+    const int num_lamps = num_targets;
+    const double base_coverage = (((parameters.lamp.height + parameters.lamp.offset) / parameters.lamp.height)) * parameters.preprocessing.safety_radius;
 
 
     // The irradiance maps are stored by lamp positions
@@ -195,12 +167,11 @@ int main(int argc, char** argv)
     {
         rpo::ExposureMap irradiance_map;
 
-        octomap::point3d target;
+        octomap::point3d target(targets[3 * i + 0], targets[3 * i + 1], targets[3 * i + 2]);
+
+        octomap::OcTreeKey t_key = augmented_model->coordToKey(target, augmented_model->getTreeDepth());
 
         octomap::KeySet visible_vox;
-
-        target.x() = targets[3 * lamp_elements * i + 0];
-        target.y() = targets[3 * lamp_elements * i + 1];
 
         for (size_t j = 0; j < num_origins; ++j)
         {
@@ -210,42 +181,21 @@ int main(int argc, char** argv)
 
             octomap::OcTreeKey key = augmented_model->coordToKey(origin, augmented_model->getTreeDepth());
 
-            for (size_t k = 1; k < ray_targets.size() - 1; ++k)
-            {
-                target.z() = ray_targets[k];
+            const int target_idx = i;
 
-                const int target_idx = lamp_elements * i + k - 1;
+            if (visibility_map[j * num_targets + target_idx] == 1)
+            {   
+                visible_vox.insert(key);
 
-                // std::cout << j << " " << num_targets << " " << target_idx << " " << j * num_targets + target_idx << " " << (visibility_map[j * num_targets + target_idx] == 1) << "\n";
+                rpo::AugmentedOcTreeNode* node = augmented_model->search(origin, augmented_model->getTreeDepth());
 
-                if (visibility_map[j * num_targets + target_idx] == 1)
-                {   
-                    visible_vox.insert(key);
+                const octomap::point3d normal = node->getNormal();
 
-                    rpo::AugmentedOcTreeNode* node = augmented_model->search(origin, augmented_model->getTreeDepth());
+                if (!std::isnan(normal.norm()))
+                {
+                    const octomap::point3d difference = target - origin;
 
-                    const octomap::point3d normal = node->getNormal();
-
-                    double integral = 0;
-
-                    if (!std::isnan(normal.norm()))
-                    {
-                        const octomap::point3d difference = target - origin;
-
-                        integral = visualizer.computeIrradianceIntegral(difference, normal, L);
-                    }
-
-                    if (node->getType() == 2)
-                    {
-                        const octomap::point3d base_point = point3d(target.x(), target.y(), ground_level);
-
-                        if (std::abs(base_point.x() - origin.x()) < base_coverage && std::abs(base_point.y() - origin.y()) < base_coverage)
-                        {
-                            integral = 0;
-                        }
-                    }
-
-                    irradiance += coefficient * integral;
+                    irradiance = parameters.lamp.power * std::abs(std::cos(normal.angleTo(difference))) / (4 * M_PI * std::pow(difference.norm(), 2));     
                 }
             }
 
@@ -255,66 +205,45 @@ int main(int argc, char** argv)
             }
         }
 
-        visualizer.saveBinaryMap(grid_elements[i], irradiance_map);
-
-        // std::cout << grid_elements[i][0] << " " << grid_elements[i][1] << "\t" << visible_vox.size() << "\t" << irradiance_map.size() << "\n";
+        visualizer.saveBinaryMap2(t_key, irradiance_map);
     }
-    
+
+
+
 
 
     // Visible voxels 
-    // for (int lamp_idx = 0; lamp_idx < grid_elements.size(); ++lamp_idx)
-    // {
-    //     int visible_voxels = 0;
+    int visible_voxels = 0;
 
-    //     for (size_t i = 0; i < num_origins; ++i)
-    //     {
-    //         bool visible = false;
-    //         for (size_t j = lamp_idx * lamp_elements; j < (lamp_idx + 1) * lamp_elements; ++j)
-    //         {
-    //             // std::cout << i << " " << num_targets << " " << j << " " << i * num_targets + j << " " << (visibility_map[i * num_targets + j] == 1) << "\n";
+    for (int lamp_idx = 0; lamp_idx < num_lamps; ++lamp_idx)
+    {
+        for (size_t i = 0; i < num_origins; ++i)
+        {
+            if (visibility_map[i * num_targets + lamp_idx] == 1)
+            {
+                ++visible_voxels;
 
-    //             if (visibility_map[i * num_targets + j] == 1)
-    //             {
-    //                 visible = true;
-    //                 break;
-    //             }
-    //         }
-    //         if (visible)
-    //         {
-    //             ++visible_voxels;
+                octomap::point3d pt(origins[3 * i + 0], origins[3 * i + 1], origins[3 * i + 2]);
 
-    //             octomap::point3d pt(
-    //                 origins[3 * i + 0],
-    //                 origins[3 * i + 1],
-    //                 origins[3 * i + 2]
-    //             );
+                octomap::ColorOcTreeNode* node = color_model->search(pt, color_model->getTreeDepth());
 
-    //             octomap::ColorOcTreeNode* node = color_model->search(pt, color_model->getTreeDepth());
+                if (node != nullptr) node->setColor(255, 0, 0);
+            } 
+        }
+    }
 
-    //             if (node != nullptr) node->setColor(255, 0, 0);
-    //         } 
-    //     }
+    std::cout << visible_voxels << std::endl;
 
-    //     std::cout << "Number of visible voxels: " << grid_elements[lamp_idx][0] << " " << grid_elements[lamp_idx][1] << " " << visible_voxels << std::endl;
-    // }
+    octomap::ColorOcTreeNode* l_node = color_model->updateNode(octomap::point3d(0.025, 0.025, boundaries[5] - 0.075), true);
+    
+
+    
+    if (l_node != nullptr) l_node->setColor(0, 0, 255);
 
 
-    // Visualization
     const std::string out_model = "/home/appuser/data/visible.ot";
+    color_model->write(out_model);
 
-    // visualizer.placeLamp(lamp_x, lamp_y);
-    // color_model->write(out_model);
-
-    // Runtime check:
-    // 1  lamp: ~ 450 ms
-    // 90 lamp: ~1300 ms
-
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-
-    std::cout << "Total duration: " << dur.count() << std::endl;
 
     return 0;
 }
-

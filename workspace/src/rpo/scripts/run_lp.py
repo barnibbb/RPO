@@ -2,6 +2,7 @@ import os
 import struct
 import numpy as np
 import pulp
+import time
 
 def read_map(file_path):
     irradiance_map = {}
@@ -94,7 +95,7 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     # Solve
     print("Run solver")
 
-    solver = pulp.COIN_CMD(timeLimit=1800)
+    solver = pulp.COIN_CMD(timeLimit=300)
     # solver = pulp.COIN_CMD()
 
     prob.solve(solver)
@@ -127,16 +128,24 @@ def verify(dose_matrix, radiation_times, dose_threshold, time_budget):
 
 if __name__ == '__main__':
 
-    folder_path = '/home/appuser/data/irradiance_office'
+    
+
+    folder_path = '/home/appuser/data/irradiance_infirmary'
 
     dose_threshold = 280.0
-    time_budget = 7200.0
+    time_budget = 1800.0
 
     dose_matrix, key_index, files = load_all_maps(folder_path)
 
     print(dose_matrix.shape)
 
+    start = time.time()
+
     radiation_times, covered_voxels = solve_irradiance_lp(dose_matrix, dose_threshold, time_budget)
+
+    stop = time.time()
+
+    print(f"Time taken: {stop - start:.2f} seconds.")
 
     print(f"Optimal radiation times: {radiation_times}")
     print(f"Covered voxels: {len(covered_voxels)}")
@@ -144,3 +153,5 @@ if __name__ == '__main__':
     print(f"Ratio of covered voxels: {len(covered_voxels) / dose_matrix.shape[0]}")
     
     verify(dose_matrix, radiation_times, dose_threshold, time_budget)
+
+    

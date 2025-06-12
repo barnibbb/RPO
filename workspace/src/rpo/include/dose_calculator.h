@@ -38,8 +38,10 @@ namespace rpo
         void loadIrradianceMaps();
         void saveIrradianceMap(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
         void saveBinaryMap(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
+        void saveBinaryMap2(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
         ExposureMap loadIrradianceMap(const OcTreeKey& plan_element_key) const;
         ExposureMap loadBinaryMap(const OcTreeKey& plan_element_key) const;
+        ExposureMap loadBinaryMap2(const OcTreeKey& plan_element_key) const;
 
         // Optimization elements
         void setOptimizationElements();

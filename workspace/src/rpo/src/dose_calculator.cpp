@@ -583,6 +583,39 @@ namespace rpo
     }
 
 
+    void DoseCalculator::saveBinaryMap2(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map)
+    {
+        const std::string output_file = m_parameters.paths.irradiance_maps + 
+            std::to_string(plan_element_key[0]) + "_" + std::to_string(plan_element_key[1]) + "_" +
+            std::to_string(plan_element_key[2]) + ".bin";
+
+        std::ofstream file(output_file, std::ios::binary);
+
+        if (file.is_open())
+        {
+            for (const auto& element : irradiance_map)
+            {
+                if (element.second > 0)
+                {
+                    file.write(reinterpret_cast<const char*>(&element.first[0]), sizeof(element.first[0]));
+                    file.write(reinterpret_cast<const char*>(&element.first[1]), sizeof(element.first[1]));
+                    file.write(reinterpret_cast<const char*>(&element.first[2]), sizeof(element.first[2]));
+                    file.write(reinterpret_cast<const char*>(&element.second),   sizeof(element.second));
+                }
+            }
+
+            file.close();
+        }
+        else
+        {
+            std::cerr << "Could not open output file for saving irradiance map!" << std::endl;
+        }
+    }   
+
+
+
+
+
 
     ExposureMap DoseCalculator::loadIrradianceMap(const OcTreeKey& plan_element_key) const
     {
@@ -654,6 +687,45 @@ namespace rpo
 
         return irradiance_map;
     }
+
+
+
+    ExposureMap DoseCalculator::loadBinaryMap2(const OcTreeKey& plan_element_key) const
+    {
+        ExposureMap irradiance_map;
+
+        const std::string input_file = m_parameters.paths.irradiance_maps + 
+            std::to_string(plan_element_key[0]) + "_" + std::to_string(plan_element_key[1]) + "_" +
+            std::to_string(plan_element_key[2]) + ".bin";
+
+        std::ifstream file(input_file, std::ios::binary);
+    
+        if (file.is_open())
+        {
+            OcTreeKey key;
+            float value;
+
+            while (file.read(reinterpret_cast<char*>(&key[0]), sizeof(key[0])))
+            {
+                file.read(reinterpret_cast<char*>(&key[1]), sizeof(key[1]));
+                file.read(reinterpret_cast<char*>(&key[2]), sizeof(key[2]));
+                file.read(reinterpret_cast<char*>(&value), sizeof(value));
+
+                irradiance_map[key] = value;
+            }
+
+            file.close();
+        }
+        else
+        {
+            std::cerr << "Could not open input file for loading irradiance map!" << std::endl;
+        }
+
+        return irradiance_map;
+    }
+
+
+
 
 
 
