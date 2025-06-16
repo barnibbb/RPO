@@ -20,6 +20,21 @@ py::list get_voxels_from_tree(const std::string& filename)
 
     py::list result;
 
+    for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
+    {
+        if (extended_model->isNodeOccupied(*it))
+        {
+            py::dict voxel;
+            voxel["x"] = it.getX();
+            voxel["y"] = it.getY();
+            voxel["z"] = it.getZ();
+
+            // TODO: add color info to extended octree
+
+            result.append(voxel);
+        }
+    }
+
     return result;
 }
 
