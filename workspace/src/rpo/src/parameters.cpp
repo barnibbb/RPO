@@ -12,7 +12,7 @@ namespace rpo
 
         // Paths
         parameters.paths.workspace       = params["paths"]["workspace"].as<std::string>();
-        parameters.paths.augmented_model = parameters.paths.workspace + params["paths"]["augmented_model"].as<std::string>();
+        parameters.paths.extended_model = parameters.paths.workspace + params["paths"]["extended_model"].as<std::string>();
         parameters.paths.color_model     = parameters.paths.workspace + params["paths"]["color_model"].as<std::string>();
         parameters.paths.lamp_model      = parameters.paths.workspace + params["paths"]["lamp_model"].as<std::string>();
         parameters.paths.irradiance_maps = parameters.paths.workspace + params["paths"]["irradiance_maps"].as<std::string>();

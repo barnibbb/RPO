@@ -4,7 +4,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "augmented_octree.h"
+#include "extended_octree.h"
 
 using namespace octomap;
 using ExposureMap = std::unordered_map<OcTreeKey, float, OcTreeKey::KeyHash>;

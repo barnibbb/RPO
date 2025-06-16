@@ -20,7 +20,7 @@ source devel/setup.bash
 
 ## Run experiment
 
-Creating augmented octomap format from color octomap:
+Creating extended octomap format from color octomap:
 
 ```bash
 rosrun rpo Augmentation <color_model> <surface> <visualize>
@@ -31,7 +31,7 @@ The mounted data folder should look like this:
 ```text
 data/
 ├── models/
-│   ├── *_augmented.ot
+│   ├── *_extended.ot
 │   ├── *_color.ot
 │   └── lamp_model.csv
 └── params.yaml
@@ -71,7 +71,7 @@ Splitting model to horizontal, vertical and general surfaces. Might be good for 
 
 ## Notes
 
-- Augmented models require regeneration when new features are assigned to cells.
+- Extended models require regeneration when new features are assigned to cells.
 - Parameter names might be updated later + description.
 - Frequently used parameters might be set as independent variables.
 - Gurobi optimization should be run outside the container. It requires academic license in the form of gurobi.lic file and gurobipy installed.

@@ -18,7 +18,7 @@ namespace rpo
 
         // Paths -------------------------------------------------------------------
         std::string work_folder;
-        std::string augmented_model_file;
+        std::string extended_model_file;
         std::string color_model_file;
         std::string lamp_voxel_model_file;
         std::string irradiance_maps_folder;

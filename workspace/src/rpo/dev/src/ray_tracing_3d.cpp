@@ -2,11 +2,11 @@
 #include <memory>
 #include <chrono>
 
-#include "augmented_octree.h"
+#include "extended_octree.h"
 #include "dose_calculator.h"
 
 bool checkBreakPoints(
-    const std::shared_ptr<rpo::AugmentedOcTree>& augmented_model,
+    const std::shared_ptr<rpo::ExtendedOcTree>& extended_model,
     const std::vector<OcTreeKey>& break_keys,
     const std::vector<OcTreeKey>& break_keys_n, 
     const point3d& p_target_3d,
@@ -18,16 +18,16 @@ double getOrigin(const double base, const double direction);
 
 KeySet readKeys(const std::string& path);
 
-KeySet checkAvailability(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model, std::shared_ptr<octomap::ColorOcTree>& color_model);
+KeySet checkAvailability(std::shared_ptr<rpo::ExtendedOcTree>& extended_model, std::shared_ptr<octomap::ColorOcTree>& color_model);
 
-void adjustModel(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model, std::shared_ptr<octomap::ColorOcTree>& color_model);
+void adjustModel(std::shared_ptr<rpo::ExtendedOcTree>& extended_model, std::shared_ptr<octomap::ColorOcTree>& color_model);
 
 int main (int argc, char** argv)
 {
     double param_z = 0.325;
     const int steps = 22;
 
-    // 1. Read augmented and color models
+    // 1. Read extended and color models
     // 2. Perform necessary modifications on both
     // 3. Compute reachable elements by traditional ray tracing --> model1
     // 4. Compute break points using 2D ray tracing
@@ -45,10 +45,10 @@ int main (int argc, char** argv)
     // std::cout << "Number of missing elements: " << missing_element_keys.size() << std::endl;
 
     std::string color_model_file = "/home/barni/rpo_ws/src/rpo/experiments/test/models/infirmary_color.ot";
-    std::string augmented_model_file = "/home/barni/rpo_ws/src/rpo/experiments/test/models/infirmary_augmented.ot";
+    std::string extended_model_file = "/home/barni/rpo_ws/src/rpo/experiments/test/models/infirmary_extended.ot";
 
     std::shared_ptr<ColorOcTree> color_model = nullptr;
-    std::shared_ptr<rpo::AugmentedOcTree> augmented_model = nullptr;
+    std::shared_ptr<rpo::ExtendedOcTree> extended_model = nullptr;
 
     std::ifstream file(color_model_file);
 
@@ -56,9 +56,9 @@ int main (int argc, char** argv)
 
     file.close();
 
-    file.open(augmented_model_file);
+    file.open(extended_model_file);
 
-    augmented_model.reset(dynamic_cast<rpo::AugmentedOcTree*>(AbstractOcTree::read(file)));
+    extended_model.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file)));
 
     file.close();
 
@@ -72,8 +72,8 @@ int main (int argc, char** argv)
     const double floor_plan_level = -1.125;
     const double resolution = 0.05;
     const int depth = 16;
-    const int ground_level_key = augmented_model->coordToKey(ground_level, depth);
-    const int floor_plan_level_key = augmented_model->coordToKey(floor_plan_level, depth);
+    const int ground_level_key = extended_model->coordToKey(ground_level, depth);
+    const int floor_plan_level_key = extended_model->coordToKey(floor_plan_level, depth);
     const double pos_x = 0.375;
     const double pos_y = -0.225;
 
@@ -91,28 +91,28 @@ int main (int argc, char** argv)
     for (const auto& key_to_delete : keys_to_delete)
     {
         color_model->deleteNode(key_to_delete, depth);
-        augmented_model->deleteNode(key_to_delete, depth);
+        extended_model->deleteNode(key_to_delete, depth);
     }
 
-    std::cout << "Cut size: " << augmented_model->getNumLeafNodes() << std::endl;
+    std::cout << "Cut size: " << extended_model->getNumLeafNodes() << std::endl;
 
     // Support function to fill in 'gaps' in the wall for infirmary model, should be moved to separate code.
-    adjustModel(augmented_model, color_model);
+    adjustModel(extended_model, color_model);
 
     // Checking general reachability of elements thus limiting the number of voxels to be considered during the ray tracing.
-    KeySet reachable_elements = checkAvailability(augmented_model, color_model);
+    KeySet reachable_elements = checkAvailability(extended_model, color_model);
 
     // 2. - Create 2D model
     KeySet obstacles_2d;
 
     // Step 1: Map obstacles to the x-y plane
-    for (rpo::AugmentedOcTree::leaf_iterator it = augmented_model->begin_leafs(), end = augmented_model->end_leafs(); it != end; ++it)
+    for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
     {
         point3d point_3d = it.getCoordinate();
     
         point3d point_2d(point_3d.x(), point_3d.y(), floor_plan_level);
 
-        if (OcTreeKey key_2d; augmented_model->coordToKeyChecked(point_2d, depth, key_2d))
+        if (OcTreeKey key_2d; extended_model->coordToKeyChecked(point_2d, depth, key_2d))
         {
             if ((point_3d.z() - ground_level) > 0.0001)
             {
@@ -121,20 +121,20 @@ int main (int argc, char** argv)
         }
     }
 
-    // Step 2: Insert 2D obstacles to the augmented 3D model
+    // Step 2: Insert 2D obstacles to the extended 3D model
     for (const auto& obstacle_key : obstacles_2d)
     {
-        rpo::NodePtr augmented_node = augmented_model->search(obstacle_key, depth);
+        rpo::NodePtr extended_node = extended_model->search(obstacle_key, depth);
         ColorOcTreeNode* color_node = color_model->search(obstacle_key, depth);
 
-        if (augmented_node == nullptr)
+        if (extended_node == nullptr)
         {
-            augmented_node = augmented_model->updateNode(obstacle_key, true);
+            extended_node = extended_model->updateNode(obstacle_key, true);
             color_node = color_model->updateNode(obstacle_key, true);
         }
     }
 
-    std::cout << "Extended size: " << augmented_model->getNumLeafNodes() << std::endl;
+    std::cout << "Extended size: " << extended_model->getNumLeafNodes() << std::endl;
 
 
     
@@ -152,7 +152,7 @@ int main (int argc, char** argv)
 
     KeySet reachable_elements_1;
 
-    // If criteria == 0 then use augmented octree ray tracing, if criteria == 1 then use color octree ray tracing
+    // If criteria == 0 then use extended octree ray tracing, if criteria == 1 then use color octree ray tracing
     unsigned int criteria = 0;
 
     std::cout << "Criteria: " << criteria << std::endl;
@@ -167,24 +167,24 @@ int main (int argc, char** argv)
     {
         ColorOcTreeNode* n_color = color_model->updateNode(p_lamp_3d, true);
 
-        OcTreeKey k_lamp_3d = augmented_model->coordToKey(p_lamp_3d, depth);
+        OcTreeKey k_lamp_3d = extended_model->coordToKey(p_lamp_3d, depth);
 
-        // for (rpo::AugmentedOcTree::leaf_iterator it = augmented_model->begin_leafs(), end = augmented_model->end_leafs(); it != end; ++it)
+        // for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
         for (const auto& r_element : reachable_elements)
         {
             // point3d p_element_3d = it.getCoordinate();
             // OcTreeKey k_element_3d = it.getKey();
 
-            point3d p_element_3d = augmented_model->keyToCoord(r_element, depth);
+            point3d p_element_3d = extended_model->keyToCoord(r_element, depth);
             OcTreeKey k_element_3d = r_element;
 
             if (p_element_3d.z() > -0.5)
             {
-                if (augmented_model->coordToKey(p_element_3d.z(), depth) == ground_level_key)
+                if (extended_model->coordToKey(p_element_3d.z(), depth) == ground_level_key)
                 {
-                    rpo::NodePtr n_augmented = augmented_model->search(point3d(p_element_3d.x(), p_element_3d.y(), p_element_3d.z() + resolution));
+                    rpo::NodePtr n_extended = extended_model->search(point3d(p_element_3d.x(), p_element_3d.y(), p_element_3d.z() + resolution));
 
-                    if (n_augmented != nullptr && augmented_model->isNodeOccupied(n_augmented))
+                    if (n_extended != nullptr && extended_model->isNodeOccupied(n_extended))
                     {
                         continue;
                     } 
@@ -199,7 +199,7 @@ int main (int argc, char** argv)
 
                     point3d p_end_xp;
 
-                    if ((criteria == 0 && augmented_model->castRay4(p_element_xp, direction_xp, p_end_xp, true, 100, k_lamp_3d)) ||
+                    if ((criteria == 0 && extended_model->castRay4(p_element_xp, direction_xp, p_end_xp, true, 100, k_lamp_3d)) ||
                         (criteria == 1 && color_model->castRay(p_element_xp, direction_xp, p_end_xp, true, 100) && color_model->coordToKey(p_end_xp, depth) == k_lamp_3d))
                     {
                         reachable_elements_1.insert(k_element_3d);
@@ -215,7 +215,7 @@ int main (int argc, char** argv)
 
                     point3d p_end_xm;
 
-                    if ((criteria == 0 && augmented_model->castRay4(p_element_xm, direction_xm, p_end_xm, true, 100, k_lamp_3d)) ||
+                    if ((criteria == 0 && extended_model->castRay4(p_element_xm, direction_xm, p_end_xm, true, 100, k_lamp_3d)) ||
                         (criteria == 1 && color_model->castRay(p_element_xm, direction_xm, p_end_xm, true, 100) && color_model->coordToKey(p_end_xm, depth) == k_lamp_3d))
                     {
                         reachable_elements_1.insert(k_element_3d);
@@ -233,7 +233,7 @@ int main (int argc, char** argv)
 
                     point3d p_end_yp;
 
-                    if ((criteria == 0 && augmented_model->castRay4(p_element_yp, direction_yp, p_end_yp, true, 100, k_lamp_3d)) ||
+                    if ((criteria == 0 && extended_model->castRay4(p_element_yp, direction_yp, p_end_yp, true, 100, k_lamp_3d)) ||
                         (criteria == 1 && color_model->castRay(p_element_yp, direction_yp, p_end_yp, true, 100) && color_model->coordToKey(p_end_yp, depth) == k_lamp_3d))
                     {
                         reachable_elements_1.insert(k_element_3d);
@@ -249,7 +249,7 @@ int main (int argc, char** argv)
 
                     point3d p_end_ym;
 
-                    if ((criteria == 0 && augmented_model->castRay4(p_element_ym, direction_ym, p_end_ym, true, 100, k_lamp_3d)) ||
+                    if ((criteria == 0 && extended_model->castRay4(p_element_ym, direction_ym, p_end_ym, true, 100, k_lamp_3d)) ||
                         (criteria == 1 && color_model->castRay(p_element_ym, direction_ym, p_end_ym, true, 100) && color_model->coordToKey(p_end_ym, depth) == k_lamp_3d))
                     {
                         reachable_elements_1.insert(k_element_3d);
@@ -268,7 +268,7 @@ int main (int argc, char** argv)
 
                     point3d p_end_zp;
 
-                    if ((criteria == 0 && augmented_model->castRay4(p_element_zp, direction_zp, p_end_zp, true, 100, k_lamp_3d)) ||
+                    if ((criteria == 0 && extended_model->castRay4(p_element_zp, direction_zp, p_end_zp, true, 100, k_lamp_3d)) ||
                         (criteria == 1 && color_model->castRay(p_element_zp, direction_zp, p_end_zp, true, 100) && color_model->coordToKey(p_end_zp, depth) == k_lamp_3d))
                     {
                         reachable_elements_1.insert(k_element_3d);
@@ -284,7 +284,7 @@ int main (int argc, char** argv)
 
                     point3d p_end_zm;
 
-                    if ((criteria == 0 && augmented_model->castRay4(p_element_zm, direction_zm, p_end_zm, true, 100, k_lamp_3d)) ||
+                    if ((criteria == 0 && extended_model->castRay4(p_element_zm, direction_zm, p_end_zm, true, 100, k_lamp_3d)) ||
                         (criteria == 1 && color_model->castRay(p_element_zm, direction_zm, p_end_zm, true, 100) && color_model->coordToKey(p_end_zm, depth) == k_lamp_3d))
                     {   
                         reachable_elements_1.insert(k_element_3d);
@@ -347,16 +347,16 @@ int main (int argc, char** argv)
 
     auto s2 = std::chrono::high_resolution_clock::now();
 
-    // for (rpo::AugmentedOcTree::leaf_iterator it = augmented_model->begin_leafs(), end = augmented_model->end_leafs(); it != end; ++it)
+    // for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
     for (const auto& r_element : reachable_elements)
     {
         // point3d p_element_2d = it.getCoordinate();
 
-        point3d p_element_2d = augmented_model->keyToCoord(r_element, depth);
+        point3d p_element_2d = extended_model->keyToCoord(r_element, depth);
 
         p_element_2d.z() = floor_plan_level;
 
-        OcTreeKey k_element_2d = augmented_model->coordToKey(p_element_2d, depth);
+        OcTreeKey k_element_2d = extended_model->coordToKey(p_element_2d, depth);
 
         if (break_keys_x.find(k_element_2d) == break_keys_x.end())
         {
@@ -373,7 +373,7 @@ int main (int argc, char** argv)
 
             if (direction_2d_x.norm() > 0.001)
             {
-                augmented_model->castRay2(p_element_2d_x, direction_2d_x, p_lamp_2d, p_end_x, true, distance_2d, depth, resolution, break_keys_x[k_element_2d], break_keys_x_n[k_element_2d], false);
+                extended_model->castRay2(p_element_2d_x, direction_2d_x, p_lamp_2d, p_end_x, true, distance_2d, depth, resolution, break_keys_x[k_element_2d], break_keys_x_n[k_element_2d], false);
             }
             
             // Check y direction shift
@@ -385,7 +385,7 @@ int main (int argc, char** argv)
 
             if (direction_2d_y.norm() > 0.001)
             { 
-                augmented_model->castRay2(p_element_2d_y, direction_2d_y, p_lamp_2d, p_end_y, true, distance_2d, depth, resolution, break_keys_y[k_element_2d], break_keys_y_n[k_element_2d],false);
+                extended_model->castRay2(p_element_2d_y, direction_2d_y, p_lamp_2d, p_end_y, true, distance_2d, depth, resolution, break_keys_y[k_element_2d], break_keys_y_n[k_element_2d],false);
             }
 
             // No shift for z direction
@@ -395,7 +395,7 @@ int main (int argc, char** argv)
 
             point3d p_end_z;
 
-            augmented_model->castRay2(p_element_2d_z, direction_2d_z, p_lamp_2d, p_end_z, true, distance_2d, depth, resolution, break_keys_z[k_element_2d], break_keys_z_n[k_element_2d], false);
+            extended_model->castRay2(p_element_2d_z, direction_2d_z, p_lamp_2d, p_end_z, true, distance_2d, depth, resolution, break_keys_z[k_element_2d], break_keys_z_n[k_element_2d], false);
         }
     }
 
@@ -425,16 +425,16 @@ int main (int argc, char** argv)
 
     for (int i = 0; i < steps; ++i)
     {
-        OcTreeKey k_lamp_3d = augmented_model->coordToKey(p_lamp_3d, depth);
+        OcTreeKey k_lamp_3d = extended_model->coordToKey(p_lamp_3d, depth);
 
-        //for (rpo::AugmentedOcTree::leaf_iterator it = augmented_model->begin_leafs(), end = augmented_model->end_leafs(); it != end; ++it)
+        //for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
         for (const auto& r_element : reachable_elements)
         {
             // point3d p_element_3d = it.getCoordinate();
 
             // OcTreeKey k_element_3d = it.getKey();
 
-            point3d p_element_3d = augmented_model->keyToCoord(r_element, depth);
+            point3d p_element_3d = extended_model->keyToCoord(r_element, depth);
 
             OcTreeKey k_element_3d = r_element;
 
@@ -444,7 +444,7 @@ int main (int argc, char** argv)
 
                 point3d p_element_2d = point3d(p_element_3d.x(), p_element_3d.y(), floor_plan_level);
 
-                OcTreeKey k_element_2d = augmented_model->coordToKey(p_element_2d, depth);
+                OcTreeKey k_element_2d = extended_model->coordToKey(p_element_2d, depth);
 
                 double distance_3d_z = p_lamp_3d.z() - p_element_3d.z();
 
@@ -458,9 +458,9 @@ int main (int argc, char** argv)
                 else if (k_element_3d[2] == ground_level_key && break_keys_z[k_element_2d].size() == 0)
                 {
                     // Take into account elements at the bottom of walls
-                    rpo::NodePtr n_augmented = augmented_model->search(point3d(p_element_3d.x(), p_element_3d.y(), p_element_3d.z() + resolution));
+                    rpo::NodePtr n_extended = extended_model->search(point3d(p_element_3d.x(), p_element_3d.y(), p_element_3d.z() + resolution));
 
-                    if (n_augmented == nullptr || !augmented_model->isNodeOccupied(n_augmented))
+                    if (n_extended == nullptr || !extended_model->isNodeOccupied(n_extended))
                     {
                         good = true;
                     } 
@@ -470,7 +470,7 @@ int main (int argc, char** argv)
                     // Check break keys in x direction
                     point3d p_element_3d_x = point3d(getOrigin(p_element_3d.x(), direction_3d.x()), p_element_3d.y(), p_element_3d.z());
 
-                    if (k_element_3d[2] != ground_level_key && checkBreakPoints(augmented_model, break_keys_x[k_element_2d], break_keys_x_n[k_element_2d], p_lamp_3d, p_element_3d_x, floor_plan_level))
+                    if (k_element_3d[2] != ground_level_key && checkBreakPoints(extended_model, break_keys_x[k_element_2d], break_keys_x_n[k_element_2d], p_lamp_3d, p_element_3d_x, floor_plan_level))
                     {
                         good = true;
                     }
@@ -479,7 +479,7 @@ int main (int argc, char** argv)
                         // Check break keys in y direction
                         point3d p_element_3d_y = point3d(p_element_3d.x(), getOrigin(p_element_3d.y(), direction_3d.y()), p_element_3d.z());
                         
-                        if (k_element_3d[2] != ground_level_key && checkBreakPoints(augmented_model, break_keys_y[k_element_2d], break_keys_y_n[k_element_2d], p_lamp_3d, p_element_3d_y, floor_plan_level))
+                        if (k_element_3d[2] != ground_level_key && checkBreakPoints(extended_model, break_keys_y[k_element_2d], break_keys_y_n[k_element_2d], p_lamp_3d, p_element_3d_y, floor_plan_level))
                         {
                             good = true;
                         }
@@ -488,11 +488,11 @@ int main (int argc, char** argv)
                             // Check break keys in z direction
                             point3d p_element_3d_z = point3d(p_element_3d.x(), p_element_3d.y(), getOrigin(p_element_3d.z(), direction_3d.z()));
 
-                            rpo::NodePtr n_query = augmented_model->search(p_element_3d_z, depth);
+                            rpo::NodePtr n_query = extended_model->search(p_element_3d_z, depth);
 
-                            if (n_query == nullptr || !augmented_model->isNodeOccupied(n_query))
+                            if (n_query == nullptr || !extended_model->isNodeOccupied(n_query))
                             {
-                                if (checkBreakPoints(augmented_model, break_keys_z[k_element_2d], break_keys_z_n[k_element_2d], p_lamp_3d, p_element_3d_z, floor_plan_level))
+                                if (checkBreakPoints(extended_model, break_keys_z[k_element_2d], break_keys_z_n[k_element_2d], p_lamp_3d, p_element_3d_z, floor_plan_level))
                                 {
                                     good = true;
                                 }
@@ -543,7 +543,7 @@ int main (int argc, char** argv)
 
 
 bool checkBreakPoints(
-    const std::shared_ptr<rpo::AugmentedOcTree>& augmented_model,
+    const std::shared_ptr<rpo::ExtendedOcTree>& extended_model,
     const std::vector<OcTreeKey>& break_keys, 
     const std::vector<OcTreeKey>& break_keys_n, 
     const point3d& p_target_3d,
@@ -556,8 +556,8 @@ bool checkBreakPoints(
     const double resolution = 0.05;
     const int depth = 16;
 
-    OcTreeKey k_target_3d = augmented_model->coordToKey(p_target_3d, depth);
-    OcTreeKey k_origin_3d = augmented_model->coordToKey(p_origin_3d, depth);
+    OcTreeKey k_target_3d = extended_model->coordToKey(p_target_3d, depth);
+    OcTreeKey k_origin_3d = extended_model->coordToKey(p_origin_3d, depth);
 
     point3d p_target_2d = point3d(p_target_3d.x(), p_target_3d.y(), floor_plan_level);
     point3d p_origin_2d = point3d(p_origin_3d.x(), p_origin_3d.y(), floor_plan_level);
@@ -572,7 +572,7 @@ bool checkBreakPoints(
 
     for (int i = 0; i < break_points.size(); ++i)
     {
-        break_points[i] = augmented_model->keyToCoord(break_keys[i]);
+        break_points[i] = extended_model->keyToCoord(break_keys[i]);
         break_distances[i] = (break_points[i] - p_origin_2d).norm() / distance_2d;
     }
 
@@ -677,9 +677,9 @@ bool checkBreakPoints(
         {
             point3d p_query = p_break_3d_1;
 
-            rpo::NodePtr n_single = augmented_model->search(p_query, depth);
+            rpo::NodePtr n_single = extended_model->search(p_query, depth);
 
-            if (n_single && augmented_model->isNodeOccupied(n_single))
+            if (n_single && extended_model->isNodeOccupied(n_single))
             {
                 return false;
             }
@@ -695,9 +695,9 @@ bool checkBreakPoints(
                     p_query.z() += resolution;
                 }
 
-                n_single = augmented_model->search(p_query, depth);
+                n_single = extended_model->search(p_query, depth);
 
-                if (n_single && augmented_model->isNodeOccupied(n_single))
+                if (n_single && extended_model->isNodeOccupied(n_single))
                 {
                     return false;
                 }
@@ -709,7 +709,7 @@ bool checkBreakPoints(
         {
             point3d p_end;
 
-            if (!augmented_model->castRay3(p_break_3d_1, direction_3d, p_break_3d_2, p_end, true, 10, depth, resolution, t_max[0], t_max[1], t_max[2], show))
+            if (!extended_model->castRay3(p_break_3d_1, direction_3d, p_break_3d_2, p_end, true, 10, depth, resolution, t_max[0], t_max[1], t_max[2], show))
             {   
                 return false;
             }
@@ -771,9 +771,9 @@ KeySet readKeys(const std::string& path)
 }
 
 
-KeySet checkAvailability(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model, std::shared_ptr<octomap::ColorOcTree>& color_model)
+KeySet checkAvailability(std::shared_ptr<rpo::ExtendedOcTree>& extended_model, std::shared_ptr<octomap::ColorOcTree>& color_model)
 {
-    augmented_model->expand();
+    extended_model->expand();
 
     KeySet reachable_elements;
 
@@ -781,16 +781,16 @@ KeySet checkAvailability(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model,
 
     double min_x, min_y, min_z, max_x, max_y, max_z;
 
-    augmented_model->getMetricMin(min_x, min_y, min_z);
-    augmented_model->getMetricMax(max_x, max_y, max_z);
+    extended_model->getMetricMin(min_x, min_y, min_z);
+    extended_model->getMetricMax(max_x, max_y, max_z);
 
     std::cout << min_x << "\t" << max_x << "\t" << min_y << "\t" << max_y << "\t" << min_z << "\t" << max_z << "\n";
 
-    OcTreeKey k_min = augmented_model->coordToKey(min_x + 0.025, min_y + 0.025, min_z + 0.025, 16);
-    OcTreeKey k_max = augmented_model->coordToKey(max_x - 0.025, max_y - 0.025, max_z - 0.025, 16);
+    OcTreeKey k_min = extended_model->coordToKey(min_x + 0.025, min_y + 0.025, min_z + 0.025, 16);
+    OcTreeKey k_max = extended_model->coordToKey(max_x - 0.025, max_y - 0.025, max_z - 0.025, 16);
 
     // Check: all 6 neighbors: being too close to border or direct obstacle
-    for (rpo::AugmentedOcTree::leaf_iterator it = augmented_model->begin_leafs(), end = augmented_model->end_leafs(); it != end; ++it)
+    for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
     {
         OcTreeKey key = it.getKey();
 
@@ -801,54 +801,54 @@ KeySet checkAvailability(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model,
 
         k_neighbor_xm[0] -= 1;
 
-        rpo::NodePtr n_neighbor_xm = augmented_model->search(k_neighbor_xm, 16);
+        rpo::NodePtr n_neighbor_xm = extended_model->search(k_neighbor_xm, 16);
 
-        if (key[0] - k_min[0] < margin || n_neighbor_xm != nullptr && augmented_model->isNodeOccupied(n_neighbor_xm))
+        if (key[0] - k_min[0] < margin || n_neighbor_xm != nullptr && extended_model->isNodeOccupied(n_neighbor_xm))
         {
             // Check +x shift
             OcTreeKey k_neighbor_xp = key;
 
             k_neighbor_xp[0] += 1;
 
-            rpo::NodePtr n_neighbor_xp = augmented_model->search(k_neighbor_xp, 16);
+            rpo::NodePtr n_neighbor_xp = extended_model->search(k_neighbor_xp, 16);
 
-            if (k_max[0] - key[0] < margin || n_neighbor_xp != nullptr && augmented_model->isNodeOccupied(n_neighbor_xp))
+            if (k_max[0] - key[0] < margin || n_neighbor_xp != nullptr && extended_model->isNodeOccupied(n_neighbor_xp))
             {
                 // Check -y shift
                 OcTreeKey k_neighbor_ym = key;
 
                 k_neighbor_ym[1] -= 1;
 
-                rpo::NodePtr n_neighbor_ym = augmented_model->search(k_neighbor_ym, 16);
+                rpo::NodePtr n_neighbor_ym = extended_model->search(k_neighbor_ym, 16);
 
-                if (key[1] - k_min[1] < margin || n_neighbor_ym != nullptr && augmented_model->isNodeOccupied(n_neighbor_ym))
+                if (key[1] - k_min[1] < margin || n_neighbor_ym != nullptr && extended_model->isNodeOccupied(n_neighbor_ym))
                 {
                     // Check +y shift
                     OcTreeKey k_neighbor_yp = key;
 
                     k_neighbor_yp[1] += 1;
 
-                    rpo::NodePtr n_neighbor_yp = augmented_model->search(k_neighbor_yp, 16);
+                    rpo::NodePtr n_neighbor_yp = extended_model->search(k_neighbor_yp, 16);
 
-                    if (k_max[1] - key[1] < margin || n_neighbor_yp != nullptr && augmented_model->isNodeOccupied(n_neighbor_yp))
+                    if (k_max[1] - key[1] < margin || n_neighbor_yp != nullptr && extended_model->isNodeOccupied(n_neighbor_yp))
                     {
                         // Check -z shift
                         OcTreeKey k_neighbor_zm = key;
 
                         k_neighbor_zm[2] -= 1;
 
-                        rpo::NodePtr n_neighbor_zm = augmented_model->search(k_neighbor_zm, 16);
+                        rpo::NodePtr n_neighbor_zm = extended_model->search(k_neighbor_zm, 16);
 
-                        if (key[2] - k_min[2] < 2 || n_neighbor_zm != nullptr && augmented_model->isNodeOccupied(n_neighbor_zm))
+                        if (key[2] - k_min[2] < 2 || n_neighbor_zm != nullptr && extended_model->isNodeOccupied(n_neighbor_zm))
                         {
                             // Check +z shift
                             OcTreeKey k_neighbor_zp = key;
 
                             k_neighbor_zp[2] += 1;
 
-                            rpo::NodePtr n_neighbor_zp = augmented_model->search(k_neighbor_zp, 16);
+                            rpo::NodePtr n_neighbor_zp = extended_model->search(k_neighbor_zp, 16);
 
-                            if (k_max[2] - key[2] < 2 || n_neighbor_zp != nullptr && augmented_model->isNodeOccupied(n_neighbor_zp))
+                            if (k_max[2] - key[2] < 2 || n_neighbor_zp != nullptr && extended_model->isNodeOccupied(n_neighbor_zp))
                             {
                                 reachable = false;
                             }
@@ -871,7 +871,7 @@ KeySet checkAvailability(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model,
         c_node->setColor(255, 0, 0);
     }
 
-    // std::cout << "All elements: " << augmented_model->getNumLeafNodes() << "\n";
+    // std::cout << "All elements: " << extended_model->getNumLeafNodes() << "\n";
 
     std::cout << "Reachable elements: " << reachable_elements.size() << "\n";
 
@@ -883,15 +883,15 @@ KeySet checkAvailability(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model,
 }
 
 
-void adjustModel(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model, std::shared_ptr<octomap::ColorOcTree>& color_model)
+void adjustModel(std::shared_ptr<rpo::ExtendedOcTree>& extended_model, std::shared_ptr<octomap::ColorOcTree>& color_model)
 {
-    augmented_model->expand();
+    extended_model->expand();
     color_model->expand();
 
     double min_x, min_y, min_z, max_x, max_y, max_z;
 
-    augmented_model->getMetricMin(min_x, min_y, min_z);
-    augmented_model->getMetricMax(max_x, max_y, max_z);
+    extended_model->getMetricMin(min_x, min_y, min_z);
+    extended_model->getMetricMax(max_x, max_y, max_z);
 
     // Fill first wall
     for (int i = 2; i < 4; ++i)
@@ -910,7 +910,7 @@ void adjustModel(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model, std::sh
 
                 c_node->setColor(255, 255, 255);
 
-                rpo::NodePtr a_node = augmented_model->updateNode(p, true);
+                rpo::NodePtr a_node = extended_model->updateNode(p, true);
 
                 z += 0.05;
             }
@@ -936,7 +936,7 @@ void adjustModel(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model, std::sh
 
                 c_node->setColor(255, 255, 255);
                 
-                rpo::NodePtr a_node = augmented_model->updateNode(p, true);
+                rpo::NodePtr a_node = extended_model->updateNode(p, true);
 
                 z += 0.05;
             }
@@ -962,7 +962,7 @@ void adjustModel(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model, std::sh
 
                 c_node->setColor(255, 255, 255);
 
-                rpo::NodePtr a_node = augmented_model->updateNode(p, true);
+                rpo::NodePtr a_node = extended_model->updateNode(p, true);
 
                 z += 0.05;
             }
@@ -973,11 +973,11 @@ void adjustModel(std::shared_ptr<rpo::AugmentedOcTree>& augmented_model, std::sh
 
     color_model->expand();
 
-    augmented_model->expand();
+    extended_model->expand();
 
     color_model->write("/home/barni/rpo_ws/src/rpo/experiments/test/infirmary_color_mod.ot");
 
-    augmented_model->write("/home/barni/rpo_ws/src/rpo/experiments/test/infirmary_augmented_mod.ot");
+    extended_model->write("/home/barni/rpo_ws/src/rpo/experiments/test/infirmary_extended_mod.ot");
 
     std::cout << "Extended size: " << color_model->getNumLeafNodes() << std::endl;
 }

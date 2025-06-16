@@ -1,4 +1,4 @@
-#include "augmented_octree.h"
+#include "extended_octree.h"
 
 #include <iostream>
 #include <fstream>
@@ -11,7 +11,7 @@ using namespace octomap;
 
 namespace rpo
 {
-    std::istream& AugmentedOcTreeNode::readData(std::istream &s)
+    std::istream& ExtendedOcTreeNode::readData(std::istream &s)
     {
         s.read((char*) &value, sizeof(value));
         s.read((char*) &m_normal, sizeof(point3d));
@@ -22,7 +22,7 @@ namespace rpo
     }
 
 
-    std::ostream& AugmentedOcTreeNode::writeData(std::ostream &s) const
+    std::ostream& ExtendedOcTreeNode::writeData(std::ostream &s) const
     {
         s.write((const char*) &value, sizeof(value));
         s.write((char*) &m_normal, sizeof(point3d));
@@ -35,13 +35,13 @@ namespace rpo
 
     // Octomap related methods --------------------------------------------------------------
 
-    AugmentedOcTree::AugmentedOcTree(double resolution) : OccupancyOcTreeBase<AugmentedOcTreeNode>(resolution)
+    ExtendedOcTree::ExtendedOcTree(double resolution) : OccupancyOcTreeBase<ExtendedOcTreeNode>(resolution)
     {
-        m_augmented_octree_member_init.ensureLinking();
+        m_extended_octree_member_init.ensureLinking();
     }
 
 
-    bool AugmentedOcTree::pruneNode(AugmentedOcTreeNode* node)
+    bool ExtendedOcTree::pruneNode(ExtendedOcTreeNode* node)
     {
         if (!isNodeCollapsible(node))
         {
@@ -63,24 +63,24 @@ namespace rpo
 
 
     // Note: expand node does not set values properly
-    void AugmentedOcTree::expandNode(AugmentedOcTreeNode* node)
+    void ExtendedOcTree::expandNode(ExtendedOcTreeNode* node)
     {
         for (unsigned int i = 0; i < 8; ++i)
         {
-            AugmentedOcTreeNode* child = createNodeChild(node, i);
+            ExtendedOcTreeNode* child = createNodeChild(node, i);
             child->copyData(*node);
         }
     }
 
 
-    bool AugmentedOcTree::isNodeCollapsible(const AugmentedOcTreeNode* node) const
+    bool ExtendedOcTree::isNodeCollapsible(const ExtendedOcTreeNode* node) const
     {
         if (!nodeChildExists(node, 0))
         {
             return false;
         }
 
-        const AugmentedOcTreeNode* first_child = getNodeChild(node, 0);
+        const ExtendedOcTreeNode* first_child = getNodeChild(node, 0);
 
         if (nodeHasChildren(first_child))
         {
@@ -100,13 +100,13 @@ namespace rpo
     }
 
 
-    void AugmentedOcTree::updateInnerOccupancy()
+    void ExtendedOcTree::updateInnerOccupancy()
     {
         this->updateInnerOccupancyRecurs(this->root, 0);
     }
 
 
-    void AugmentedOcTree::updateInnerOccupancyRecurs(AugmentedOcTreeNode* node, unsigned int depth)
+    void ExtendedOcTree::updateInnerOccupancyRecurs(ExtendedOcTreeNode* node, unsigned int depth)
     {
         if (nodeHasChildren(node))
         {
@@ -125,36 +125,36 @@ namespace rpo
     }
 
 
-    AugmentedOcTree::StaticMemberInitializer AugmentedOcTree::m_augmented_octree_member_init;
+    ExtendedOcTree::StaticMemberInitializer ExtendedOcTree::m_extended_octree_member_init;
 
 
     // RPO related methods ------------------------------------------------------------------
 
-    // While creating the augmented octree, nodes are automatically pruned
-    std::shared_ptr<AugmentedOcTree> AugmentedOcTree::convertToAugmentedOcTree(const ColorOcTree& color_octree)
+    // While creating the extended octree, nodes are automatically pruned
+    std::shared_ptr<ExtendedOcTree> ExtendedOcTree::convertToExtendedOcTree(const ColorOcTree& color_octree)
     {
-        std::shared_ptr<AugmentedOcTree> augmented_octree = std::make_shared<AugmentedOcTree>(color_octree.getResolution());
+        std::shared_ptr<ExtendedOcTree> extended_octree = std::make_shared<ExtendedOcTree>(color_octree.getResolution());
 
         for (ColorOcTree::leaf_iterator it = color_octree.begin_leafs(), end = color_octree.end_leafs(); it != end; ++it)
         {
-            rpo::AugmentedOcTreeNode* node = augmented_octree->search(it.getKey());
+            rpo::ExtendedOcTreeNode* node = extended_octree->search(it.getKey());
 
             if (node == nullptr)
             {
-                node = augmented_octree->updateNode(it.getKey(), true);
+                node = extended_octree->updateNode(it.getKey(), true);
                 node->setNormal(point3d(0, 0, 0));
                 node->setDose(0);
                 node->setType(0);
             }
         }
 
-        augmented_octree->expand();
+        extended_octree->expand();
 
-        return augmented_octree;
+        return extended_octree;
     }
 
 
-    void AugmentedOcTree::pruneTree()
+    void ExtendedOcTree::pruneTree()
     {
         for (tree_iterator it = this->begin_tree(), end = this->end_tree(); it != end; ++it)
         {
@@ -176,7 +176,7 @@ namespace rpo
 
     // Ray cast related methods -------------------------------------------------------------
 
-    bool AugmentedOcTree::castRay(const point3d& origin, const point3d& direction, const point3d& target, point3d& end, 
+    bool ExtendedOcTree::castRay(const point3d& origin, const point3d& direction, const point3d& target, point3d& end, 
         bool ignore_unknown, double max_range, int depth, double resolution) const
     {
         // Initialization phase -------------------------------------------------------
@@ -326,7 +326,7 @@ namespace rpo
 
 
     // Computes ray and collects the keys of break points
-    bool AugmentedOcTree::castRay2(const point3d& origin, const point3d& direction, const point3d& target, point3d& end, 
+    bool ExtendedOcTree::castRay2(const point3d& origin, const point3d& direction, const point3d& target, point3d& end, 
         bool ignore_unknown, double max_range, int depth, double resolution, std::vector<OcTreeKey>& break_keys1, std::vector<OcTreeKey>& break_keys2, bool skip) const
     {
         // Initialization phase -------------------------------------------------------
@@ -494,7 +494,7 @@ namespace rpo
 
 
 
-    bool AugmentedOcTree::castRay3(const point3d& origin, const point3d& direction, const point3d& target, point3d& end,
+    bool ExtendedOcTree::castRay3(const point3d& origin, const point3d& direction, const point3d& target, point3d& end,
         bool ignore_unknown, double max_range, int depth, double resolution, double t0, double t1, double t2, bool show) const
     {
         // Initialization phase -------------------------------------------------------
@@ -653,7 +653,7 @@ namespace rpo
 
 
 
-    bool AugmentedOcTree::castRay4(const point3d& origin, const point3d& directionP, point3d& end, bool ignoreUnknown, double maxRange, OcTreeKey target, bool show) const
+    bool ExtendedOcTree::castRay4(const point3d& origin, const point3d& directionP, point3d& end, bool ignoreUnknown, double maxRange, OcTreeKey target, bool show) const
     {
         /// ----------  see OcTreeBase::computeRayKeys  -----------
 
@@ -807,7 +807,7 @@ namespace rpo
 
 
 
-    bool AugmentedOcTree::checkBreakPoints(const std::vector<OcTreeKey>& break_keys, const std::vector<OcTreeKey>& break_keys_n, 
+    bool ExtendedOcTree::checkBreakPoints(const std::vector<OcTreeKey>& break_keys, const std::vector<OcTreeKey>& break_keys_n, 
         const point3d& p_target_3d, const point3d& p_origin_3d, const double floor_plan_level, bool show)
     {
         const double resolution = this->getResolution();
@@ -965,7 +965,7 @@ namespace rpo
 
 
 
-    bool AugmentedOcTree::evaluateRayCast(const point3d& target_point, const point3d& end_point, int depth) const
+    bool ExtendedOcTree::evaluateRayCast(const point3d& target_point, const point3d& end_point, int depth) const
     {
         OcTreeKey target_key, end_key;
 
@@ -978,7 +978,7 @@ namespace rpo
     }
 
 
-    bool AugmentedOcTree::checkRayCast(bool good, const point3d& target_point, const point3d& origin, const point3d& direction, 
+    bool ExtendedOcTree::checkRayCast(bool good, const point3d& target_point, const point3d& origin, const point3d& direction, 
         point3d& end_point, double max_range, int depth, double resolution, bool ignore_unknown) const
     {
         if (castRay(origin, direction, target_point, end_point, ignore_unknown, max_range, depth, resolution))
@@ -994,7 +994,7 @@ namespace rpo
     }
 
 
-    void AugmentedOcTree::compute3DNormalVectors()
+    void ExtendedOcTree::compute3DNormalVectors()
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr octree_points (new pcl::PointCloud<pcl::PointXYZ>);
         pcl::PointCloud<pcl::Normal>::Ptr octree_normals (new pcl::PointCloud<pcl::Normal>);
@@ -1031,7 +1031,7 @@ namespace rpo
     }
 
 
-    void AugmentedOcTree::computeGroundLevel()
+    void ExtendedOcTree::computeGroundLevel()
     {
         std::map<double, int> height_map;
 
@@ -1099,7 +1099,7 @@ namespace rpo
     }
 
 
-    void AugmentedOcTree::findObjects(bool surface)
+    void ExtendedOcTree::findObjects(bool surface)
     {
         std::cout << "Find objects ... " << std::endl;
 
@@ -1169,18 +1169,18 @@ namespace rpo
     }
 
 
-    void AugmentedOcTree::visualize()
+    void ExtendedOcTree::visualize()
     {
         ColorOcTree color_model(this->resolution);
 
-        for (AugmentedOcTree::leaf_iterator it = this->begin_leafs(), end = this->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = this->begin_leafs(), end = this->end_leafs(); it != end; ++it)
         {
             ColorOcTreeNode* color_node = color_model.updateNode(it.getKey(), true);
         }
 
         color_model.expand();
 
-        for (AugmentedOcTree::leaf_iterator it = this->begin_leafs(), end = this->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = this->begin_leafs(), end = this->end_leafs(); it != end; ++it)
         {
             NodePtr node = this->search(it.getKey(), this->tree_depth);
 
@@ -1234,7 +1234,7 @@ namespace rpo
     }
 
 
-    std::array<double, 6> AugmentedOcTree::getBoundaries() const
+    std::array<double, 6> ExtendedOcTree::getBoundaries() const
     {
         std::array<double, 6> boundaries;
 

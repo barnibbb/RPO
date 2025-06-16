@@ -24,12 +24,12 @@ int main(int argc, char** argv)
 
     // --- Read 3D models ---                                                                                  
     std::shared_ptr<ColorOcTree> color_model = nullptr;
-    std::shared_ptr<rpo::AugmentedOcTree> augmented_model = nullptr;
+    std::shared_ptr<rpo::ExtendedOcTree> extended_model = nullptr;
 
     std::ifstream file(parameters.paths.color_model);
 
     std::cout << parameters.paths.color_model << std::endl;
-    std::cout << parameters.paths.augmented_model << std::endl;
+    std::cout << parameters.paths.extended_model << std::endl;
 
     if (file.is_open())
     {
@@ -45,19 +45,19 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    file.open(parameters.paths.augmented_model);
+    file.open(parameters.paths.extended_model);
 
     if (file.is_open())
     {
-        augmented_model.reset(dynamic_cast<rpo::AugmentedOcTree*>(AbstractOcTree::read(file)));
+        extended_model.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file)));
 
-        std::cout << "Augmented octree num leaf nodes: " << augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << "Extended octree num leaf nodes: " << extended_model->getNumLeafNodes() << std::endl;
 
         file.close();
     }        
     else
     {
-        std::cerr << "Could not open augmented octree file!" << std::endl;
+        std::cerr << "Could not open extended octree file!" << std::endl;
         return -1;
     }
 
@@ -72,7 +72,7 @@ int main(int argc, char** argv)
     // --- Visualizer initialization ---
     ros::init(argc, argv, "gpu_irradiance");
 
-    rpo::ROSVisualizer visualizer(augmented_model, color_model, parameters);
+    rpo::ROSVisualizer visualizer(extended_model, color_model, parameters);
 
 
 
@@ -86,9 +86,9 @@ int main(int argc, char** argv)
 
 
     // --- Generating occupancy grid ---
-    float resolution = augmented_model->getResolution();
+    float resolution = extended_model->getResolution();
 
-    std::array<double, 6> boundaries = augmented_model->getBoundaries();
+    std::array<double, 6> boundaries = extended_model->getBoundaries();
 
     int dim_x = std::ceil((boundaries[1] - boundaries[0]) / resolution);
     int dim_y = std::ceil((boundaries[3] - boundaries[2]) / resolution);
@@ -96,9 +96,9 @@ int main(int argc, char** argv)
 
     std::vector<int> occupancy_grid(dim_x * dim_y * dim_z, 0);
 
-    for (rpo::AugmentedOcTree::leaf_iterator it = augmented_model->begin_leafs(), end = augmented_model->end_leafs(); it != end; ++it)
+    for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
     {
-        if (augmented_model->isNodeOccupied(*it))
+        if (extended_model->isNodeOccupied(*it))
         {
             octomap::point3d coord = it.getCoordinate();
             int x = static_cast<int>((coord.x() - boundaries[0]) / resolution);
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
 
     for (const auto key : origin_keys)
     {
-        octomap::point3d pt = augmented_model->keyToCoord(key, augmented_model->getTreeDepth());
+        octomap::point3d pt = extended_model->keyToCoord(key, extended_model->getTreeDepth());
 
         origins.push_back(pt.x());
         origins.push_back(pt.y());
@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 
     for (size_t i = 0; i < grid_elements.size(); ++i)
     {
-        octomap::point3d pt = augmented_model->keyToCoord(grid_elements[i], augmented_model->getTreeDepth());
+        octomap::point3d pt = extended_model->keyToCoord(grid_elements[i], extended_model->getTreeDepth());
 
         lamp_x = pt.x();
         lamp_y = pt.y();
@@ -208,7 +208,7 @@ int main(int argc, char** argv)
 
             octomap::point3d origin(origins[3 * j + 0], origins[3 * j + 1], origins[3 * j + 2]);
 
-            octomap::OcTreeKey key = augmented_model->coordToKey(origin, augmented_model->getTreeDepth());
+            octomap::OcTreeKey key = extended_model->coordToKey(origin, extended_model->getTreeDepth());
 
             for (size_t k = 1; k < ray_targets.size() - 1; ++k)
             {
@@ -222,7 +222,7 @@ int main(int argc, char** argv)
                 {   
                     visible_vox.insert(key);
 
-                    rpo::AugmentedOcTreeNode* node = augmented_model->search(origin, augmented_model->getTreeDepth());
+                    rpo::ExtendedOcTreeNode* node = extended_model->search(origin, extended_model->getTreeDepth());
 
                     const octomap::point3d normal = node->getNormal();
 

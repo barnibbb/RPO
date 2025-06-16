@@ -1,4 +1,4 @@
-#include "augmented_octree.h"
+#include "extended_octree.h"
 
 #include <filesystem>
 #include <regex>
@@ -20,11 +20,11 @@ int main (int argc, char** argv)
     std::filesystem::path dir = color_path.parent_path();
     std::string stem = color_path.stem().string();
 
-    std::string new_stem = std::regex_replace(stem, std::regex("_color$"), "_augmented");
+    std::string new_stem = std::regex_replace(stem, std::regex("_color$"), "_extended");
     std::string new_filename = new_stem + color_path.extension().string();
-    std::filesystem::path augmented_model_path = dir / new_filename;
+    std::filesystem::path extended_model_path = dir / new_filename;
 
-    const std::string augmented_model_file = augmented_model_path.string();
+    const std::string extended_model_file = extended_model_path.string();
 
     bool surface = std::string(argv[2]) == "1" ? true : false;
     bool visualize = std::string(argv[3]) == "1" ? true : false;
@@ -41,40 +41,40 @@ int main (int argc, char** argv)
 
         std::cout << "Color octree number of leaf nodes: " << color_octree->getNumLeafNodes() << std::endl;
 
-        std::shared_ptr<rpo::AugmentedOcTree> augmented_octree = rpo::AugmentedOcTree::convertToAugmentedOcTree(*color_octree);
+        std::shared_ptr<rpo::ExtendedOcTree> extended_octree = rpo::ExtendedOcTree::convertToExtendedOcTree(*color_octree);
 
-        std::cout << "Converted augmented octree number of leaf nodes: " << augmented_octree->getNumLeafNodes() << std::endl;
+        std::cout << "Converted extended octree number of leaf nodes: " << extended_octree->getNumLeafNodes() << std::endl;
 
-        augmented_octree->compute3DNormalVectors();
+        extended_octree->compute3DNormalVectors();
 
-        augmented_octree->computeGroundLevel();
+        extended_octree->computeGroundLevel();
 
-        augmented_octree->findObjects(surface);
+        extended_octree->findObjects(surface);
 
         if (visualize)
         {
             ros::init(argc, argv, "augmentation");
 
-            augmented_octree->visualize();
+            extended_octree->visualize();
         }
 
-        std::fstream file_2(augmented_model_file, std::ios::out);
+        std::fstream file_2(extended_model_file, std::ios::out);
 
         if (file_2.is_open())
         {
-            augmented_octree->write(file_2);
+            extended_octree->write(file_2);
 
             file_2.close();
 
-            std::shared_ptr<rpo::AugmentedOcTree> read_augmented_octree = nullptr;
+            std::shared_ptr<rpo::ExtendedOcTree> read_extended_octree = nullptr;
 
-            file_2.open(augmented_model_file, std::ios::in);
+            file_2.open(extended_model_file, std::ios::in);
 
             if (file_2.is_open())
             {
-                read_augmented_octree.reset(dynamic_cast<rpo::AugmentedOcTree*>(AbstractOcTree::read(file_2)));
+                read_extended_octree.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file_2)));
 
-                std::cout << "Loaded augmented octree number of leaf nodes: " << read_augmented_octree->getNumLeafNodes() << std::endl;
+                std::cout << "Loaded extended octree number of leaf nodes: " << read_extended_octree->getNumLeafNodes() << std::endl;
 
                 file_2.close();
             }

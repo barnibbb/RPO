@@ -6,7 +6,7 @@ namespace rpo
     struct PathParams
     {
         std::string workspace;
-        std::string augmented_model;
+        std::string extended_model;
         std::string color_model;
         std::string lamp_model;
         std::string irradiance_maps;

@@ -24,22 +24,22 @@ int main (int argc, char** argv)
 
 
     // Read 3D model --------------------------------------------------------------- 
-    std::shared_ptr<rpo::AugmentedOcTree> augmented_model = nullptr;
+    std::shared_ptr<rpo::ExtendedOcTree> extended_model = nullptr;
     std::shared_ptr<octomap::ColorOcTree> color_model = std::make_shared<octomap::ColorOcTree>(0.05);
 
-    std::ifstream file(parameters.augmented_model_file);
+    std::ifstream file(parameters.extended_model_file);
 
     if (file.is_open())
     {
-        augmented_model.reset(dynamic_cast<rpo::AugmentedOcTree*>(AbstractOcTree::read(file)));
+        extended_model.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file)));
 
-        std::cout << "Augmented octree num leaf nodes: " << augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << "Extended octree num leaf nodes: " << extended_model->getNumLeafNodes() << std::endl;
 
         file.close();
     }        
     else
     {
-        std::cerr << "Could not open augmented octree file!" << std::endl;
+        std::cerr << "Could not open extended octree file!" << std::endl;
         return -1;
     }
 
@@ -48,13 +48,13 @@ int main (int argc, char** argv)
     KeySet obstacle_2d, free_2d;
 
     // Step 1: Map obstacles to the x-y plane
-    for (rpo::AugmentedOcTree::leaf_iterator it = augmented_model->begin_leafs(), end = augmented_model->end_leafs(); it != end; ++it)
+    for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
     {
         point3d point_3d = it.getCoordinate();
     
         point3d point_2d(point_3d.x(), point_3d.y(), 0);
 
-        if (OcTreeKey key; augmented_model->coordToKeyChecked(point_2d, 16, key))
+        if (OcTreeKey key; extended_model->coordToKeyChecked(point_2d, 16, key))
         {
             if (point_3d.z() > 0.08)
             {
@@ -67,7 +67,7 @@ int main (int argc, char** argv)
         }
     }
 
-    // Step 2: Insert 2D obstacles to the augmented 3D model
+    // Step 2: Insert 2D obstacles to the extended 3D model
     for (const auto& key : obstacle_2d)
     {
         octomap::ColorOcTreeNode* node = color_model->search(key, 16);

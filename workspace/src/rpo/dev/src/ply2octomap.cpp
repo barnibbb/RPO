@@ -11,11 +11,11 @@
 #include <pcl/io/ply_io.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 
-#include "augmented_octree.h"
+#include "extended_octree.h"
 
 struct Vertex { double x, y, z; unsigned char r, g, b; };
 void readPlyBinary(const std::string& filename, std::vector<Vertex>& vertices); 
-void cutModel(rpo::AugmentedOcTree& a_tree, octomap::ColorOcTree& c_tree);
+void cutModel(rpo::ExtendedOcTree& a_tree, octomap::ColorOcTree& c_tree);
 
 Eigen::Matrix4f createRotationMatrix(float angle_x, float angle_y, float angle_z);
 
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 
 
     // Convert transformed cloud to octomap
-    rpo::AugmentedOcTree a_tree(0.1);
+    rpo::ExtendedOcTree a_tree(0.1);
 
     octomap::ColorOcTree c_tree(0.1);
 
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 
         octomap::OcTreeKey key = a_tree.coordToKey(point, 16);
 
-        rpo::AugmentedOcTreeNode* a_node = a_tree.search(key, 16);
+        rpo::ExtendedOcTreeNode* a_node = a_tree.search(key, 16);
 
         octomap::ColorOcTreeNode* c_node = c_tree.search(key, 16);
 
@@ -146,7 +146,7 @@ int main(int argc, char** argv)
 
 
     // Expand octomap
-    rpo::AugmentedOcTree a_tree2(0.05);
+    rpo::ExtendedOcTree a_tree2(0.05);
 
     octomap::ColorOcTree c_tree2(0.05);
 
@@ -158,7 +158,7 @@ int main(int argc, char** argv)
 
         octomap::ColorOcTreeNode* c_node = c_tree.search(it.getKey(), 16);
 
-        rpo::AugmentedOcTreeNode* a_node2 = nullptr;
+        rpo::ExtendedOcTreeNode* a_node2 = nullptr;
 
         c_node2 = c_tree2.updateNode(octomap::point3d(p.x() - 0.025, p.y() - 0.025, p.z() - 0.025), true); c_node2->setColor(c_node->getColor());
         c_node2 = c_tree2.updateNode(octomap::point3d(p.x() - 0.025, p.y() - 0.025, p.z() + 0.025), true); c_node2->setColor(c_node->getColor());
@@ -183,7 +183,7 @@ int main(int argc, char** argv)
     c_tree2.expand();
 
     const std::string color_file = "/home/barni/rpo_ws/src/rpo/models/K408_color_mod.ot";
-    const std::string aug_file = "/home/barni/rpo_ws/src/rpo/models/K408_augmented_mod.ot";
+    const std::string aug_file = "/home/barni/rpo_ws/src/rpo/models/K408_extended_mod.ot";
 
     c_tree2.write(color_file);
     a_tree2.write(aug_file);
@@ -268,11 +268,11 @@ void readPlyBinary(const std::string& filename, std::vector<Vertex>& vertices)
 
 
 
-void cutModel(rpo::AugmentedOcTree& a_tree, octomap::ColorOcTree& c_tree)
+void cutModel(rpo::ExtendedOcTree& a_tree, octomap::ColorOcTree& c_tree)
 {
     rpo::KeySet points_to_delete;
 
-    for (rpo::AugmentedOcTree::leaf_iterator it = a_tree.begin_leafs(), end = a_tree.end_leafs(); it != end; ++it)
+    for (rpo::ExtendedOcTree::leaf_iterator it = a_tree.begin_leafs(), end = a_tree.end_leafs(); it != end; ++it)
     {
         rpo::NodePtr node = a_tree.search(it.getKey(), 16);
 

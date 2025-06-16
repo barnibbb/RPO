@@ -43,13 +43,13 @@ target_link_libraries(Parameters
 )
 
 
-# Augmentation test
-add_executable(Augmentation
-  test/augmentation_test.cpp
-  src/augmented_octree.cpp
+# Extension test
+add_executable(Extension
+  test/extension_test.cpp
+  src/extended_octree.cpp
 )
 
-target_link_libraries(Augmentation
+target_link_libraries(Extension
   ${catkin_LIBRARIES}
 )
 
@@ -85,7 +85,7 @@ add_executable(GPU_Irradiance
   src/gpu_ray_tracing.cu
   src/ros_visualizer.cpp
   src/dose_calculator.cpp
-  src/augmented_octree.cpp
+  src/extended_octree.cpp
   src/parameters.cpp
 )
 
@@ -106,7 +106,7 @@ add_executable(CeilingLamp
   src/gpu_ray_tracing.cu
   src/ros_visualizer.cpp
   src/dose_calculator.cpp
-  src/augmented_octree.cpp
+  src/extended_octree.cpp
   src/parameters.cpp
 )
 
@@ -125,7 +125,7 @@ set_target_properties(CeilingLamp PROPERTIES
 # Split model
 add_executable(SplitModel
   dev/src/split_model.cpp
-  src/augmented_octree.cpp
+  src/extended_octree.cpp
   src/parameters.cpp
 )
 
@@ -141,7 +141,7 @@ add_executable(KnownPlan
   src/plan_generator.cpp
   src/ros_visualizer.cpp
   src/dose_calculator.cpp
-  src/augmented_octree.cpp
+  src/extended_octree.cpp
   src/parameters.cpp
 )
 
@@ -158,7 +158,7 @@ add_executable(RPO
   src/plan_generator.cpp
   src/ros_visualizer.cpp
   src/dose_calculator.cpp
-  src/augmented_octree.cpp
+  src/extended_octree.cpp
   src/parameters.cpp
 )
 

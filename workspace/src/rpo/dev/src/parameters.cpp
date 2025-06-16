@@ -12,7 +12,7 @@ namespace rpo
 
             // Paths -------------------------------------------------------------------
             work_folder = getValue("work folder");
-            augmented_model_file   = work_folder + getValue("augmented model file");
+            extended_model_file   = work_folder + getValue("extended model file");
             color_model_file       = work_folder + getValue("color model file");
             lamp_voxel_model_file  = work_folder + getValue("lamp voxel model file");
             irradiance_maps_folder = work_folder + getValue("irradiance maps folder");

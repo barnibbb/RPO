@@ -8,7 +8,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "augmented_octree.h"
+#include "extended_octree.h"
 
 int main (int argc, char** argv)
 {
@@ -21,7 +21,7 @@ int main (int argc, char** argv)
 
     octomap::ColorOcTree diff_model(0.05);
 
-    rpo::AugmentedOcTree diff_augmented(0.05);
+    rpo::ExtendedOcTree diff_extended(0.05);
 
     std::ifstream file(model_1);
 
@@ -55,7 +55,7 @@ int main (int argc, char** argv)
     }        
     else
     {
-        std::cerr << "Could not open augmented octree file!" << std::endl;
+        std::cerr << "Could not open extended octree file!" << std::endl;
         return -1;
     }
 
@@ -99,7 +99,7 @@ int main (int argc, char** argv)
 
             n->setColor(255, 0, 0);
 
-            rpo::NodePtr na = diff_augmented.updateNode(it.getKey(), true);
+            rpo::NodePtr na = diff_extended.updateNode(it.getKey(), true);
 
             ++differences_1;
 
@@ -136,10 +136,10 @@ int main (int argc, char** argv)
     std::cout << "Extra: " << diff_extra.size() << std::endl;
 
     std::string model_3 = "/home/barni/rpo_ws/src/rpo/experiments/test/extra.ot";
-    std::string model_4 = "/home/barni/rpo_ws/src/rpo/experiments/test/extra_augmented.ot";
+    std::string model_4 = "/home/barni/rpo_ws/src/rpo/experiments/test/extra_extended.ot";
 
     diff_model.write(model_3);
-    diff_augmented.write(model_4);
+    diff_extended.write(model_4);
 
     ctree2.write("/home/barni/rpo_ws/src/rpo/experiments/test/c2.ot");
 

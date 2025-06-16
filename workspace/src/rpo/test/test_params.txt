@@ -1,6 +1,6 @@
 Paths
 work folder: /home/barni/rpo_ws/src/rpo/experiments/1a/
-augmented model file: models/office1_preprocessed.ot
+extended model file: models/office1_preprocessed.ot
 color model file: models/office1_color.ot
 lamp voxel model file: models/lamp_model.csv
 irradiance maps folder: irradiance_maps/

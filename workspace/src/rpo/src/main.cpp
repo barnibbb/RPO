@@ -25,7 +25,7 @@ int main (int argc, char** argv)
 
     // Read 3D models --------------------------------------------------------------                                                                                  
     std::shared_ptr<ColorOcTree> color_model = nullptr;
-    std::shared_ptr<rpo::AugmentedOcTree> augmented_model = nullptr;
+    std::shared_ptr<rpo::ExtendedOcTree> extended_model = nullptr;
 
     std::ifstream file(parameters.paths.color_model);
 
@@ -43,19 +43,19 @@ int main (int argc, char** argv)
         return -1;
     }
 
-    file.open(parameters.paths.augmented_model);
+    file.open(parameters.paths.extended_model);
 
     if (file.is_open())
     {
-        augmented_model.reset(dynamic_cast<rpo::AugmentedOcTree*>(AbstractOcTree::read(file)));
+        extended_model.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file)));
 
-        std::cout << "Augmented octree num leaf nodes: " << augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << "Extended octree num leaf nodes: " << extended_model->getNumLeafNodes() << std::endl;
 
         file.close();
     }        
     else
     {
-        std::cerr << "Could not open augmented octree file!" << std::endl;
+        std::cerr << "Could not open extended octree file!" << std::endl;
         return -1;
     }
 
@@ -68,7 +68,7 @@ int main (int argc, char** argv)
     // Visualizer initialization ---------------------------------------------------
     ros::init(argc, argv, "rpo");
 
-    rpo::ROSVisualizer visualizer(augmented_model, color_model, parameters);
+    rpo::ROSVisualizer visualizer(extended_model, color_model, parameters);
     
     
 
@@ -113,7 +113,7 @@ int main (int argc, char** argv)
     // Initialize plan generator ---------------------------------------------------
     rpo::PlanGenerator generator(visualizer.getParameters());
 
-    generator.setModelBoundaries(augmented_model->getBoundaries());
+    generator.setModelBoundaries(extended_model->getBoundaries());
     generator.setGroundZone(visualizer.getGroundZone());
 
     visualizer.showElementTypes();

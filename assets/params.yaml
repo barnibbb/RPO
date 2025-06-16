@@ -1,6 +1,6 @@
 paths:
   workspace: /home/appuser/data/
-  augmented_model: models/infirmary_augmented.ot
+  extended_model: models/infirmary_extended.ot
   color_model: models/infirmary_color.ot
   lamp_model: models/lamp_model.csv
   irradiance_maps: irradiance_infirmary/

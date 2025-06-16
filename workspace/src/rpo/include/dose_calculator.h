@@ -2,7 +2,7 @@
 #include <memory>
 #include <vector>
 
-#include "augmented_octree.h"
+#include "extended_octree.h"
 #include "parameters.h"
 
 namespace rpo
@@ -20,7 +20,7 @@ namespace rpo
     class DoseCalculator
     {
     public:
-        DoseCalculator(const std::shared_ptr<AugmentedOcTree> augmented_model, const Parameters& parameters);
+        DoseCalculator(const std::shared_ptr<ExtendedOcTree> extended_model, const Parameters& parameters);
         Parameters getParameters() const;
 
         // Preprocessing
@@ -83,7 +83,7 @@ namespace rpo
         double m_resolution;
         double m_ground_level;
 
-        std::shared_ptr<AugmentedOcTree> m_augmented_model = nullptr;
+        std::shared_ptr<ExtendedOcTree> m_extended_model = nullptr;
 
         KeySet m_ground_zone_elements;
         KeySet m_optimization_elements;

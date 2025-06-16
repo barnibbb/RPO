@@ -48,9 +48,9 @@ namespace rpo
 
 
 
-    DoseCalculator::DoseCalculator(const std::shared_ptr<AugmentedOcTree> augmented_model, const Parameters& parameters)
+    DoseCalculator::DoseCalculator(const std::shared_ptr<ExtendedOcTree> extended_model, const Parameters& parameters)
     {
-        m_augmented_model = augmented_model;
+        m_extended_model = extended_model;
 
         m_parameters = parameters;
 
@@ -74,9 +74,9 @@ namespace rpo
 
         bool ground_level_set = false;
 
-        for (rpo::AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (rpo::ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
-            NodePtr node = m_augmented_model->search(it.getKey(), m_depth);
+            NodePtr node = m_extended_model->search(it.getKey(), m_depth);
 
             if (node != nullptr && node->getType() == 2)
             {
@@ -101,7 +101,7 @@ namespace rpo
 
                     while (point.z() < m_parameters.lamp.top)
                     {
-                        NodePtr upper_node = m_augmented_model->search(point, m_depth);
+                        NodePtr upper_node = m_extended_model->search(point, m_depth);
 
                         if (upper_node == nullptr)
                         {
@@ -126,7 +126,7 @@ namespace rpo
 
         for (const auto& key : ground_zone)
         {
-            const point3d center = m_augmented_model->keyToCoord(key, m_depth);
+            const point3d center = m_extended_model->keyToCoord(key, m_depth);
 
             bool ground = true;
 
@@ -142,7 +142,7 @@ namespace rpo
                 {
                     const point3d neighbor = center + point3d(i * m_resolution, j * m_resolution, 0);
 
-                    if (OcTreeKey neighbor_key; m_augmented_model->coordToKeyChecked(neighbor, m_depth, neighbor_key))
+                    if (OcTreeKey neighbor_key; m_extended_model->coordToKeyChecked(neighbor, m_depth, neighbor_key))
                     {
                         if (ground_zone.find(neighbor_key) == ground_zone.end())
                         {
@@ -160,7 +160,7 @@ namespace rpo
 
             if (ground)
             {
-                if (NodePtr node = m_augmented_model->search(key, m_depth); node != nullptr)
+                if (NodePtr node = m_extended_model->search(key, m_depth); node != nullptr)
                 {
                     ground_zone_limited.insert(key);
                 }
@@ -248,7 +248,7 @@ namespace rpo
     {
         const double grid_distance = m_parameters.computation.grid_distance * m_resolution;
 
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
             point3d point = it.getCoordinate();
 
@@ -258,7 +258,7 @@ namespace rpo
 
                 for (const auto& key : m_grid_elements)
                 {
-                    point3d grid_point = m_augmented_model->keyToCoord(key);
+                    point3d grid_point = m_extended_model->keyToCoord(key);
 
                     if (point.distance(grid_point) < grid_distance)
                     {
@@ -285,9 +285,9 @@ namespace rpo
 
         point3d continuous_height(0, 0, height);
 
-        if (OcTreeKey key; m_augmented_model->coordToKeyChecked(continuous_height, m_depth, key))
+        if (OcTreeKey key; m_extended_model->coordToKeyChecked(continuous_height, m_depth, key))
         {
-            point3d discrete_height = m_augmented_model->keyToCoord(key, m_depth);
+            point3d discrete_height = m_extended_model->keyToCoord(key, m_depth);
 
             height = discrete_height.z();
 
@@ -301,7 +301,7 @@ namespace rpo
 
         std::cout << "Lamp elements: " << m_ray_targets.size() << std::endl;
 
-        std::cout << m_augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << m_extended_model->getNumLeafNodes() << std::endl;
     }
 
 
@@ -320,7 +320,7 @@ namespace rpo
 
         for (const auto& key : m_ground_zone_elements)
         {
-            const point3d& point = m_augmented_model->keyToCoord(key, m_depth);
+            const point3d& point = m_extended_model->keyToCoord(key, m_depth);
 
             ground_zone.insert({ point.x(), point.y() });
         }
@@ -344,7 +344,7 @@ namespace rpo
                 
             for (const auto& element : m_grid_elements)
             {
-                point3d grid_position = m_augmented_model->keyToCoord(element, m_depth);
+                point3d grid_position = m_extended_model->keyToCoord(element, m_depth);
 
                 point3d lamp_position(grid_plan.first[i], grid_plan.first[i + 1], m_ground_level);
 
@@ -357,7 +357,7 @@ namespace rpo
                 }
             }
 
-            point3d closest_point = m_augmented_model->keyToCoord(grid_key, m_depth);
+            point3d closest_point = m_extended_model->keyToCoord(grid_key, m_depth);
 
             grid_plan.first[i] = closest_point.x();
             grid_plan.first[i + 1] = closest_point.y();
@@ -397,7 +397,7 @@ namespace rpo
 
             if (!m_parameters.computation.filter)
             {
-                for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+                for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
                 {
                     m_base_reachable_elements.insert(it.getKey());
                 }
@@ -414,7 +414,7 @@ namespace rpo
         #pragma omp parallel for
         for (int i = 0; i < m_grid_elements.size(); ++i)
         {
-            point3d position = m_augmented_model->keyToCoord(m_grid_elements[i], m_depth);
+            point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
 
             position.z() = m_parameters.lamp.center;
 
@@ -434,7 +434,7 @@ namespace rpo
             {
                 OcTreeKey plan_element_key;
 
-                m_augmented_model->coordToKeyChecked(position, m_depth, plan_element_key);
+                m_extended_model->coordToKeyChecked(position, m_depth, plan_element_key);
 
                 if (m_parameters.computation.store_maps)
                 {
@@ -743,7 +743,7 @@ namespace rpo
         }
         else if (type == 5 || type == 6 || type == 9)
         {
-            for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+            for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
             {
                 m_optimization_elements.insert(it.getKey());
                 
@@ -765,9 +765,9 @@ namespace rpo
                 m_optimization_elements.insert(element);
 
                 // TODO: extension for object computation
-                AugmentedOcTreeNode* augmented_node = m_augmented_model->search(element);
+                ExtendedOcTreeNode* extended_node = m_extended_model->search(element);
 
-                if (augmented_node->getType() == 5)
+                if (extended_node->getType() == 5)
                 {
                     m_object_elements.insert(element);
                 }
@@ -785,16 +785,16 @@ namespace rpo
     {
         signal (SIGINT, handler);
 
-        std::cout << "Original size: " << m_augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << "Original size: " << m_extended_model->getNumLeafNodes() << std::endl;
 
         // Step 1: Map obstacles to the x-y plane
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
             point3d point_3d = it.getCoordinate();
         
             point3d point_2d(point_3d.x(), point_3d.y(), m_ground_level - 1);
 
-            if (OcTreeKey key; m_augmented_model->coordToKeyChecked(point_2d, m_depth, key))
+            if (OcTreeKey key; m_extended_model->coordToKeyChecked(point_2d, m_depth, key))
             {
                 if (m_parameters.computation.type != 8)
                 {
@@ -808,18 +808,18 @@ namespace rpo
             }
         }
 
-        // Step 2: Insert 2D obstacles to the augmented 3D model
+        // Step 2: Insert 2D obstacles to the extended 3D model
         for (const auto& key : m_obstacle_2d)
         {
-            NodePtr node = m_augmented_model->search(key, m_depth);
+            NodePtr node = m_extended_model->search(key, m_depth);
 
             if (node == nullptr)
             {
-                node = m_augmented_model->updateNode(key, true);
+                node = m_extended_model->updateNode(key, true);
             }
         }
 
-        std::cout << "Extended size: " << m_augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << "Extended size: " << m_extended_model->getNumLeafNodes() << std::endl;
 
 
         if (m_parameters.computation.type == 2)
@@ -839,7 +839,7 @@ namespace rpo
         pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimation;
         pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree (new pcl::search::KdTree<pcl::PointXYZ>());
 
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
             const point3d point = it.getCoordinate();      
 
@@ -863,7 +863,7 @@ namespace rpo
 
             const point3d point(pcl_point.data[0], pcl_point.data[1], pcl_point.data[2]);
 
-            if (NodePtr node = m_augmented_model->search(point, m_depth); node != nullptr)
+            if (NodePtr node = m_extended_model->search(point, m_depth); node != nullptr)
             {
                 const pcl::Normal normal = octree_normals->at(i);
 
@@ -884,8 +884,8 @@ namespace rpo
     {
         double x_min, y_min, z_min, x_max, y_max, z_max;
 
-        m_augmented_model->getMetricMin(x_min, y_min, z_min);
-        m_augmented_model->getMetricMax(x_max, y_max, z_max);
+        m_extended_model->getMetricMin(x_min, y_min, z_min);
+        m_extended_model->getMetricMax(x_max, y_max, z_max);
 
         double x = x_min + m_resolution / 2;
         double y = y_min + m_resolution / 2;
@@ -905,16 +905,16 @@ namespace rpo
 
                 while(z < z_max)
                 {
-                    if (OcTreeKey key; m_augmented_model->coordToKeyChecked(point3d(x, y, z), m_depth, key))
+                    if (OcTreeKey key; m_extended_model->coordToKeyChecked(point3d(x, y, z), m_depth, key))
                     {
-                        point3d point = m_augmented_model->keyToCoord(key, m_depth);
+                        point3d point = m_extended_model->keyToCoord(key, m_depth);
 
                         x = point.x();
                         y = point.y();
                         z = point.z();
                     }
 
-                    NodePtr node = m_augmented_model->search(point3d(x, y, z), m_depth);
+                    NodePtr node = m_extended_model->search(point3d(x, y, z), m_depth);
 
                     if (node != nullptr && !std::isnan(node->getNormal().norm()) && !isHiddenElement(point3d(x, y, z)))
                     {
@@ -946,9 +946,9 @@ namespace rpo
 
                 point3d least_efficient_point = (std::abs(normal_sum.normalized().z()) > sqrt(0.5)) ? point3d(x, y, z_closest) : point3d(x, y, z_furthest);
 
-                if (NodePtr lep_node = m_augmented_model->search(least_efficient_point, m_depth); lep_node != nullptr)
+                if (NodePtr lep_node = m_extended_model->search(least_efficient_point, m_depth); lep_node != nullptr)
                 {
-                    if (OcTreeKey least_efficient_key; m_augmented_model->coordToKeyChecked(least_efficient_point, m_depth, least_efficient_key))
+                    if (OcTreeKey least_efficient_key; m_extended_model->coordToKeyChecked(least_efficient_point, m_depth, least_efficient_key))
                     {
                         m_optimization_elements.insert(least_efficient_key);
                     }
@@ -979,7 +979,7 @@ namespace rpo
 
         if (std::abs(point.z() - m_ground_level) < 0.0001)
         {
-            NodePtr node = m_augmented_model->search(point + point3d(0, 0, m_ground_level), m_depth);
+            NodePtr node = m_extended_model->search(point + point3d(0, 0, m_ground_level), m_depth);
 
             if (node != nullptr)
             {
@@ -994,7 +994,7 @@ namespace rpo
         {
             for (const auto& step : steps)
             {
-                NodePtr node = m_augmented_model->search(point + step, m_depth);
+                NodePtr node = m_extended_model->search(point + step, m_depth);
 
                 if (node == nullptr)
                 {
@@ -1041,7 +1041,7 @@ namespace rpo
 
             OcTreeKey key; 
 
-            m_augmented_model->coordToKeyChecked(lamp_position, m_depth, key);
+            m_extended_model->coordToKeyChecked(lamp_position, m_depth, key);
 
             if (m_ground_zone_elements.find(key) != m_ground_zone_elements.end())
             {
@@ -1053,7 +1053,7 @@ namespace rpo
             }
             else
             {  
-                for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+                for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
                 {
                     exposure_maps[i / element_size][it.getKey()] = 0;
                 }
@@ -1085,7 +1085,7 @@ namespace rpo
                 general_over += 1;
             }
 
-            NodePtr node = m_augmented_model->search(element, m_depth);
+            NodePtr node = m_extended_model->search(element, m_depth);
 
             if (node != nullptr && node->getType() == 5)
             {
@@ -1133,7 +1133,7 @@ namespace rpo
 
             for (int i = 0; i < m_grid_elements.size(); ++i)
             {
-                point3d grid_position = m_augmented_model->keyToCoord(m_grid_elements[i], m_depth);
+                point3d grid_position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
 
                 grid_position.z() = m_parameters.lamp.center; 
 
@@ -1193,7 +1193,7 @@ namespace rpo
                 }
                 else
                 {
-                    for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+                    for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
                     {
                         irradiance_map[it.getKey()] = computeIrradianceForElement(lamp_position, it.getKey(), index);
                     } 
@@ -1265,7 +1265,7 @@ namespace rpo
     {
         double irradiance = 0;
 
-        const point3d point = m_augmented_model->keyToCoord(key, m_depth);
+        const point3d point = m_extended_model->keyToCoord(key, m_depth);
 
         const point3d lamp_position_2d(lamp_position.x(), lamp_position.y(), m_ground_level - 1);
 
@@ -1289,7 +1289,7 @@ namespace rpo
     {
         double irradiance = 0;
 
-        const point3d point = m_augmented_model->keyToCoord(key, m_depth);
+        const point3d point = m_extended_model->keyToCoord(key, m_depth);
 
         const point3d lamp_position_2d(lamp_position.x(), lamp_position.y(), m_ground_level - 1);
 
@@ -1301,7 +1301,7 @@ namespace rpo
 
         if (!std::isnan(distance) && distance < m_parameters.lamp.range && d2 > m_parameters.preprocessing.safety_radius)
         {
-            NodePtr node = m_augmented_model->search(key, m_depth);
+            NodePtr node = m_extended_model->search(key, m_depth);
 
             if (node != nullptr) // 2D element with known normal vector
             {
@@ -1325,9 +1325,9 @@ namespace rpo
 
                     point3d end_point;
 
-                    if (m_augmented_model->castRay(point, difference_2d, lamp_position_2d, end_point, true, 1.1 * std::abs(difference_2d.norm()), m_depth, m_resolution))
+                    if (m_extended_model->castRay(point, difference_2d, lamp_position_2d, end_point, true, 1.1 * std::abs(difference_2d.norm()), m_depth, m_resolution))
                     {
-                        NodePtr end_node = m_augmented_model->search(end_point, m_depth);
+                        NodePtr end_node = m_extended_model->search(end_point, m_depth);
 
                         if (end_node != nullptr)
                         {
@@ -1355,11 +1355,11 @@ namespace rpo
     {
         double irradiance = 0;
 
-        const point3d point = m_augmented_model->keyToCoord(key, m_depth);
+        const point3d point = m_extended_model->keyToCoord(key, m_depth);
 
         static double base_coverage = (((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height)) * m_parameters.preprocessing.safety_radius;
 
-        NodePtr node = m_augmented_model->search(key, m_depth);
+        NodePtr node = m_extended_model->search(key, m_depth);
 
         if (node->getType() == 2)
         {
@@ -1408,11 +1408,11 @@ namespace rpo
     {
         double irradiance = 0;
 
-        const point3d point = m_augmented_model->keyToCoord(key, m_depth);
+        const point3d point = m_extended_model->keyToCoord(key, m_depth);
 
         static double base_coverage = (((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height)) * m_parameters.preprocessing.safety_radius;
 
-        NodePtr node = m_augmented_model->search(key, m_depth);
+        NodePtr node = m_extended_model->search(key, m_depth);
 
         if (node->getType() == 2)
         {
@@ -1483,9 +1483,9 @@ namespace rpo
 
         point3d target(lamp_position.x(), lamp_position.y(), m_ground_level - 1);
 
-        if (OcTreeKey key; m_augmented_model->coordToKeyChecked(target, m_depth, key))
+        if (OcTreeKey key; m_extended_model->coordToKeyChecked(target, m_depth, key))
         {
-            target = m_augmented_model->keyToCoord(key, m_depth);
+            target = m_extended_model->keyToCoord(key, m_depth);
         }
 
         point3d point(element.x(), element.y(), m_ground_level - 1);
@@ -1502,7 +1502,7 @@ namespace rpo
 
         point3d end_point;
 
-        if (m_augmented_model->checkRayCast(false, target, origin, target_direction, end_point, distance, m_depth, m_resolution, true))
+        if (m_extended_model->checkRayCast(false, target, origin, target_direction, end_point, distance, m_depth, m_resolution, true))
         {
             offset = (direction.y() >= 0) ? m_resolution : -m_resolution;
 
@@ -1510,7 +1510,7 @@ namespace rpo
 
             target_direction = target - origin;
 
-            if (m_augmented_model->checkRayCast(true, target, origin, target_direction, end_point, distance, m_depth, m_resolution, true))
+            if (m_extended_model->checkRayCast(true, target, origin, target_direction, end_point, distance, m_depth, m_resolution, true))
             {
                 return true;
             }
@@ -1529,19 +1529,19 @@ namespace rpo
     {
         signal (SIGINT, handler);
 
-        const int ground_level_key = m_augmented_model->coordToKey(m_ground_level, m_depth);
+        const int ground_level_key = m_extended_model->coordToKey(m_ground_level, m_depth);
 
-        OcTreeKey k_lamp_3d = m_augmented_model->coordToKey(lamp_position, m_depth);
+        OcTreeKey k_lamp_3d = m_extended_model->coordToKey(lamp_position, m_depth);
 
-        OcTreeKey k_element_3d = m_augmented_model->coordToKey(element);
+        OcTreeKey k_element_3d = m_extended_model->coordToKey(element);
 
-        point3d target = m_augmented_model->keyToCoord(k_lamp_3d, m_depth);
+        point3d target = m_extended_model->keyToCoord(k_lamp_3d, m_depth);
 
-        if (m_augmented_model->coordToKey(element.z(), m_depth) == ground_level_key)
+        if (m_extended_model->coordToKey(element.z(), m_depth) == ground_level_key)
         {
-            rpo::NodePtr n_augmented = m_augmented_model->search(point3d(element.x(), element.y(), element.z() + m_resolution));
+            rpo::NodePtr n_extended = m_extended_model->search(point3d(element.x(), element.y(), element.z() + m_resolution));
 
-            if (n_augmented != nullptr && m_augmented_model->isNodeOccupied(n_augmented))
+            if (n_extended != nullptr && m_extended_model->isNodeOccupied(n_extended))
             {
                 return false;
             } 
@@ -1560,7 +1560,7 @@ namespace rpo
         point3d end_point;
 
 
-        if (k_element_3d[0] == k_lamp_3d[0] || !m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
+        if (k_element_3d[0] == k_lamp_3d[0] || !m_extended_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
         {
             offset = (direction.y() > 0) ? m_resolution : -m_resolution;
 
@@ -1568,7 +1568,7 @@ namespace rpo
 
             target_direction = target - origin;
 
-            if (k_element_3d[1] == k_lamp_3d[1] || !m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
+            if (k_element_3d[1] == k_lamp_3d[1] || !m_extended_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
             {
                 double offset = (direction.z() > 0) ? m_resolution : -m_resolution;
 
@@ -1576,7 +1576,7 @@ namespace rpo
                 
                 point3d target_direction = target - origin;
 
-                if (k_element_3d[2] != k_lamp_3d[2] && m_augmented_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
+                if (k_element_3d[2] != k_lamp_3d[2] && m_extended_model->castRay4(origin, target_direction, end_point, true, distance, k_lamp_3d))
                 {
                     return true;
                 }
@@ -1598,20 +1598,20 @@ namespace rpo
 
     void DoseCalculator::computeGeneralVisibility()
     {
-        m_augmented_model->expand();
+        m_extended_model->expand();
 
         const int margin = 10;
 
         double min_x, min_y, min_z, max_x, max_y, max_z;
 
-        m_augmented_model->getMetricMin(min_x, min_y, min_z);
-        m_augmented_model->getMetricMax(max_x, max_y, max_z);
+        m_extended_model->getMetricMin(min_x, min_y, min_z);
+        m_extended_model->getMetricMax(max_x, max_y, max_z);
 
-        OcTreeKey k_min = m_augmented_model->coordToKey(min_x + m_resolution / 2.0, min_y + m_resolution / 2.0, min_z + m_resolution / 2.0, m_depth);
-        OcTreeKey k_max = m_augmented_model->coordToKey(max_x - m_resolution / 2.0, max_y - m_resolution / 2.0, max_z - m_resolution / 2.0, m_depth);
+        OcTreeKey k_min = m_extended_model->coordToKey(min_x + m_resolution / 2.0, min_y + m_resolution / 2.0, min_z + m_resolution / 2.0, m_depth);
+        OcTreeKey k_max = m_extended_model->coordToKey(max_x - m_resolution / 2.0, max_y - m_resolution / 2.0, max_z - m_resolution / 2.0, m_depth);
 
         // Check: all 6 neighbors: being too close to border or direct obstacle
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
             OcTreeKey key = it.getKey();
 
@@ -1622,54 +1622,54 @@ namespace rpo
 
             k_neighbor_xm[0] -= 1;
 
-            NodePtr n_neighbor_xm = m_augmented_model->search(k_neighbor_xm, m_depth);
+            NodePtr n_neighbor_xm = m_extended_model->search(k_neighbor_xm, m_depth);
 
-            if (key[0] - k_min[0] < margin || n_neighbor_xm != nullptr && m_augmented_model->isNodeOccupied(n_neighbor_xm))
+            if (key[0] - k_min[0] < margin || n_neighbor_xm != nullptr && m_extended_model->isNodeOccupied(n_neighbor_xm))
             {
                 // Check +x shift
                 OcTreeKey k_neighbor_xp = key;
 
                 k_neighbor_xp[0] += 1;
 
-                NodePtr n_neighbor_xp = m_augmented_model->search(k_neighbor_xp, m_depth);
+                NodePtr n_neighbor_xp = m_extended_model->search(k_neighbor_xp, m_depth);
 
-                if (k_max[0] - key[0] < margin || n_neighbor_xp != nullptr && m_augmented_model->isNodeOccupied(n_neighbor_xp))
+                if (k_max[0] - key[0] < margin || n_neighbor_xp != nullptr && m_extended_model->isNodeOccupied(n_neighbor_xp))
                 {
                     // Check -y shift
                     OcTreeKey k_neighbor_ym = key;
 
                     k_neighbor_ym[1] -= 1;
 
-                    NodePtr n_neighbor_ym = m_augmented_model->search(k_neighbor_ym, m_depth);
+                    NodePtr n_neighbor_ym = m_extended_model->search(k_neighbor_ym, m_depth);
 
-                    if (key[1] - k_min[1] < margin || n_neighbor_ym != nullptr && m_augmented_model->isNodeOccupied(n_neighbor_ym))
+                    if (key[1] - k_min[1] < margin || n_neighbor_ym != nullptr && m_extended_model->isNodeOccupied(n_neighbor_ym))
                     {
                         // Check +y shift
                         OcTreeKey k_neighbor_yp = key;
 
                         k_neighbor_yp[1] += 1;
 
-                        NodePtr n_neighbor_yp = m_augmented_model->search(k_neighbor_yp, m_depth);
+                        NodePtr n_neighbor_yp = m_extended_model->search(k_neighbor_yp, m_depth);
 
-                        if (k_max[1] - key[1] < margin || n_neighbor_yp != nullptr && m_augmented_model->isNodeOccupied(n_neighbor_yp))
+                        if (k_max[1] - key[1] < margin || n_neighbor_yp != nullptr && m_extended_model->isNodeOccupied(n_neighbor_yp))
                         {
                             // Check -z shift
                             OcTreeKey k_neighbor_zm = key;
 
                             k_neighbor_zm[2] -= 1;
 
-                            NodePtr n_neighbor_zm = m_augmented_model->search(k_neighbor_zm, m_depth);
+                            NodePtr n_neighbor_zm = m_extended_model->search(k_neighbor_zm, m_depth);
 
-                            if (key[2] - k_min[2] < 2 || n_neighbor_zm != nullptr && m_augmented_model->isNodeOccupied(n_neighbor_zm))
+                            if (key[2] - k_min[2] < 2 || n_neighbor_zm != nullptr && m_extended_model->isNodeOccupied(n_neighbor_zm))
                             {
                                 // Check +z shift
                                 OcTreeKey k_neighbor_zp = key;
 
                                 k_neighbor_zp[2] += 1;
 
-                                NodePtr n_neighbor_zp = m_augmented_model->search(k_neighbor_zp, m_depth);
+                                NodePtr n_neighbor_zp = m_extended_model->search(k_neighbor_zp, m_depth);
 
-                                if (k_max[2] - key[2] < 2 || n_neighbor_zp != nullptr && m_augmented_model->isNodeOccupied(n_neighbor_zp))
+                                if (k_max[2] - key[2] < 2 || n_neighbor_zp != nullptr && m_extended_model->isNodeOccupied(n_neighbor_zp))
                                 {
                                     reachable = false;
                                 }
@@ -1711,7 +1711,7 @@ namespace rpo
         #pragma omp parallel for
         for (int i = 0; i < m_grid_elements.size(); ++i)
         {
-            point3d p_lamp_2d = m_augmented_model->keyToCoord(m_grid_elements[i], m_depth);
+            point3d p_lamp_2d = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
 
             p_lamp_2d.z() = m_ground_level - 1;
 
@@ -1719,11 +1719,11 @@ namespace rpo
 
             for (const auto& r_element : m_base_reachable_elements)
             {
-                point3d p_element_2d = m_augmented_model->keyToCoord(r_element, m_depth);
+                point3d p_element_2d = m_extended_model->keyToCoord(r_element, m_depth);
 
                 p_element_2d.z() = m_ground_level - 1;
 
-                OcTreeKey k_element_2d = m_augmented_model->coordToKey(p_element_2d, m_depth);
+                OcTreeKey k_element_2d = m_extended_model->coordToKey(p_element_2d, m_depth);
 
                 if (m_break_points_x[i].find(k_element_2d) == m_break_points_x[i].end())
                 {
@@ -1740,7 +1740,7 @@ namespace rpo
                     {
                         point3d p_end_x;
 
-                        m_augmented_model->castRay2(p_element_2d_x, direction_2d_x, p_lamp_2d, p_end_x, true, 
+                        m_extended_model->castRay2(p_element_2d_x, direction_2d_x, p_lamp_2d, p_end_x, true, 
                             distance_2d, m_depth, m_resolution, m_break_points_x[i][k_element_2d], m_break_points_xn[i][k_element_2d], false);
                     }
 
@@ -1753,7 +1753,7 @@ namespace rpo
                     {
                         point3d p_end_y;
 
-                        m_augmented_model->castRay2(p_element_2d_y, direction_2d_y, p_lamp_2d, p_end_y, true,
+                        m_extended_model->castRay2(p_element_2d_y, direction_2d_y, p_lamp_2d, p_end_y, true,
                             distance_2d, m_depth, m_resolution, m_break_points_y[i][k_element_2d], m_break_points_yn[i][k_element_2d], false);
                     }
                     
@@ -1764,7 +1764,7 @@ namespace rpo
 
                     point3d p_end_z;
 
-                    m_augmented_model->castRay2(p_element_2d_z, direction_2d_z, p_lamp_2d, p_end_z, true,
+                    m_extended_model->castRay2(p_element_2d_z, direction_2d_z, p_lamp_2d, p_end_z, true,
                         distance_2d, m_depth, m_resolution, m_break_points_z[i][k_element_2d], m_break_points_zn[i][k_element_2d], false);
                 }
             }
@@ -1795,21 +1795,21 @@ namespace rpo
     {
         signal (SIGINT, handler);
 
-        const int ground_level_key = m_augmented_model->coordToKey(m_ground_level, m_depth);
+        const int ground_level_key = m_extended_model->coordToKey(m_ground_level, m_depth);
 
-        OcTreeKey k_lamp_3d = m_augmented_model->coordToKey(lamp_position, m_depth);
+        OcTreeKey k_lamp_3d = m_extended_model->coordToKey(lamp_position, m_depth);
 
-        point3d p_lamp_3d = m_augmented_model->keyToCoord(k_lamp_3d, m_depth);
+        point3d p_lamp_3d = m_extended_model->keyToCoord(k_lamp_3d, m_depth);
 
         point3d p_element_3d = element;
 
-        OcTreeKey k_element_3d = m_augmented_model->coordToKey(p_element_3d, m_depth);
+        OcTreeKey k_element_3d = m_extended_model->coordToKey(p_element_3d, m_depth);
 
         point3d direction_3d = p_lamp_3d - p_element_3d;
 
         point3d p_element_2d = point3d(p_element_3d.x(), p_element_3d.y(), m_ground_level - 1);
 
-        OcTreeKey k_element_2d = m_augmented_model->coordToKey(p_element_2d, m_depth);
+        OcTreeKey k_element_2d = m_extended_model->coordToKey(p_element_2d, m_depth);
 
         double distance_3d_z = p_lamp_3d.z() - p_element_3d.z();
 
@@ -1822,9 +1822,9 @@ namespace rpo
         else if (k_element_3d[2] == ground_level_key && m_break_points_z[index][k_element_2d].size() == 0)
         {
             // Take into account elements at the bottom of walls
-            NodePtr node = m_augmented_model->search(point3d(p_element_3d.x(), p_element_3d.y(), p_element_3d.z() + m_resolution));
+            NodePtr node = m_extended_model->search(point3d(p_element_3d.x(), p_element_3d.y(), p_element_3d.z() + m_resolution));
 
-            if (node == nullptr || !m_augmented_model->isNodeOccupied(node))
+            if (node == nullptr || !m_extended_model->isNodeOccupied(node))
             {
                 return true;
             } 
@@ -1834,7 +1834,7 @@ namespace rpo
             // Check break keys in x direction
             point3d p_element_3d_x = point3d(getOrigin(p_element_3d.x(), direction_3d.x()), p_element_3d.y(), p_element_3d.z());
 
-            if (k_element_3d[2] != ground_level_key && m_augmented_model->checkBreakPoints(m_break_points_x[index][k_element_2d], 
+            if (k_element_3d[2] != ground_level_key && m_extended_model->checkBreakPoints(m_break_points_x[index][k_element_2d], 
                 m_break_points_xn[index][k_element_2d], p_lamp_3d, p_element_3d_x, m_ground_level))
             {
                 return true;
@@ -1844,7 +1844,7 @@ namespace rpo
                 // Check break keys in y direction
                 point3d p_element_3d_y = point3d(p_element_3d.x(), getOrigin(p_element_3d.y(), direction_3d.y()), p_element_3d.z());
 
-                if (k_element_3d[2] != ground_level_key && m_augmented_model->checkBreakPoints(m_break_points_y[index][k_element_2d], 
+                if (k_element_3d[2] != ground_level_key && m_extended_model->checkBreakPoints(m_break_points_y[index][k_element_2d], 
                     m_break_points_yn[index][k_element_2d], p_lamp_3d, p_element_3d_y, m_ground_level))
                 {
                     return true;
@@ -1853,11 +1853,11 @@ namespace rpo
                 {
                     point3d p_element_3d_z = point3d(p_element_3d.x(), p_element_3d.y(), getOrigin(p_element_3d.z(), direction_3d.z()));
 
-                    NodePtr n_query = m_augmented_model->search(p_element_3d_z, m_depth);
+                    NodePtr n_query = m_extended_model->search(p_element_3d_z, m_depth);
 
-                    if (n_query == nullptr || !m_augmented_model->isNodeOccupied(n_query))
+                    if (n_query == nullptr || !m_extended_model->isNodeOccupied(n_query))
                     {
-                        if (m_augmented_model->checkBreakPoints(m_break_points_z[index][k_element_2d], 
+                        if (m_extended_model->checkBreakPoints(m_break_points_z[index][k_element_2d], 
                             m_break_points_zn[index][k_element_2d], p_lamp_3d, p_element_3d_z, m_ground_level))
                         {
                             return true;

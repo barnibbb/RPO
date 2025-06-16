@@ -13,9 +13,9 @@ namespace rpo
 
 
 
-    ROSVisualizer::ROSVisualizer(const std::shared_ptr<AugmentedOcTree> augmented_model, 
+    ROSVisualizer::ROSVisualizer(const std::shared_ptr<ExtendedOcTree> extended_model, 
         const std::shared_ptr<ColorOcTree> color_model, const Parameters& parameters) : 
-        DoseCalculator(augmented_model, parameters)
+        DoseCalculator(extended_model, parameters)
     {
         m_model_publisher = m_node_handle.advertise<octomap_msgs::Octomap>("/exposure_map", 10);
 
@@ -142,13 +142,13 @@ namespace rpo
 
     void ROSVisualizer::cutUnderGround()
     {
-        std::cout << "Before cut: " << m_augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << "Before cut: " << m_extended_model->getNumLeafNodes() << std::endl;
 
         KeySet points_to_delete;
 
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
-            NodePtr node = m_augmented_model->search(it.getKey(), m_depth);
+            NodePtr node = m_extended_model->search(it.getKey(), m_depth);
 
             if (node != nullptr && node->getType() == 3)
             {
@@ -158,11 +158,11 @@ namespace rpo
 
         for (const auto& key : points_to_delete)
         {
-            m_augmented_model->deleteNode(key, m_depth);
+            m_extended_model->deleteNode(key, m_depth);
             m_color_model->deleteNode(key, m_depth);
         }
     
-        std::cout << "After cut: " << m_augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << "After cut: " << m_extended_model->getNumLeafNodes() << std::endl;
     }
 
 
@@ -170,9 +170,9 @@ namespace rpo
     void ROSVisualizer::cutUnderGround2()
     {
         
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
-            NodePtr node = m_augmented_model->search(it.getKey(), m_depth);
+            NodePtr node = m_extended_model->search(it.getKey(), m_depth);
 
             if (node != nullptr && it.getCoordinate().z() < m_ground_level - 0.5)
             {
@@ -183,9 +183,9 @@ namespace rpo
 
         KeySet points_to_delete;
 
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
-            NodePtr node = m_augmented_model->search(it.getKey(), m_depth);
+            NodePtr node = m_extended_model->search(it.getKey(), m_depth);
 
             if (node != nullptr && it.getCoordinate().z() < m_ground_level - 0.5)
             {
@@ -195,7 +195,7 @@ namespace rpo
 
         for (const auto& key : points_to_delete)
         {
-            m_augmented_model->deleteNode(key, m_depth);
+            m_extended_model->deleteNode(key, m_depth);
             // m_color_model->deleteNode(key, m_depth);
         }
     }
@@ -204,13 +204,13 @@ namespace rpo
 
     void ROSVisualizer::filter()
     {
-        auto boundaries = m_augmented_model->getBoundaries();
+        auto boundaries = m_extended_model->getBoundaries();
 
         point3d p(boundaries[1] + 0.025 - 1.7, boundaries[3] + 0.025 - 1.7, boundaries[5] + 0.025);
 
         KeySet points_to_delete;
 
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
             point3d query_point = it.getCoordinate();
 
@@ -224,16 +224,16 @@ namespace rpo
 
         for (const auto& key : points_to_delete)
         {
-            NodePtr node = m_augmented_model->search(key, m_depth); 
+            NodePtr node = m_extended_model->search(key, m_depth); 
 
             if (node != nullptr)
             {
-                m_augmented_model->deleteNode(key, m_depth);
+                m_extended_model->deleteNode(key, m_depth);
                 m_color_model->deleteNode(key, m_depth);
             }
         }
 
-        std::cout << m_augmented_model->getNumLeafNodes() << "\n";
+        std::cout << m_extended_model->getNumLeafNodes() << "\n";
     }
 
 
@@ -266,17 +266,17 @@ namespace rpo
     void ROSVisualizer::showElementTypes()
     {
         
-        for (AugmentedOcTree::leaf_iterator it = m_augmented_model->begin_leafs(), end = m_augmented_model->end_leafs(); it != end; ++it)
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
-            AugmentedOcTreeNode* augmented_node = m_augmented_model->search(it.getKey());
+            ExtendedOcTreeNode* extended_node = m_extended_model->search(it.getKey());
 
             ColorOcTreeNode* color_node = m_color_model->search(it.getKey());
 
-            if (augmented_node != nullptr && color_node != nullptr)
+            if (extended_node != nullptr && color_node != nullptr)
             {
                 if (m_verification_elements.find(it.getKey()) != m_verification_elements.end())
                 {
-                    switch (augmented_node->getType())
+                    switch (extended_node->getType())
                     {
                         case 1: // General - orange
                             color_node->setColor(ORANGE);
@@ -445,7 +445,7 @@ namespace rpo
             }
 
 
-            NodePtr node = m_augmented_model->search(element, m_depth);
+            NodePtr node = m_extended_model->search(element, m_depth);
 
             if (node != nullptr && node->getType() == 5)
             {
@@ -496,7 +496,7 @@ namespace rpo
     {
         signal (SIGINT, handler2);
 
-        if (m_augmented_model != nullptr)
+        if (m_extended_model != nullptr)
         {
             octomap_msgs::Octomap message;
 

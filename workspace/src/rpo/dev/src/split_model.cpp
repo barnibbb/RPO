@@ -2,7 +2,7 @@
 #include <memory>
 #include <string>
 
-#include "augmented_octree.h"
+#include "extended_octree.h"
 #include "parameters.h"
 
 int main(int argc, char** argv)
@@ -21,12 +21,12 @@ int main(int argc, char** argv)
 
     // --- Read 3D models ---                                                                                  
     std::shared_ptr<ColorOcTree> color_model = nullptr;
-    std::shared_ptr<rpo::AugmentedOcTree> augmented_model = nullptr;
+    std::shared_ptr<rpo::ExtendedOcTree> extended_model = nullptr;
 
     std::ifstream file(parameters.paths.color_model);
 
     std::cout << parameters.paths.color_model << std::endl;
-    std::cout << parameters.paths.augmented_model << std::endl;
+    std::cout << parameters.paths.extended_model << std::endl;
 
     if (file.is_open())
     {
@@ -42,30 +42,30 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    file.open(parameters.paths.augmented_model);
+    file.open(parameters.paths.extended_model);
 
     if (file.is_open())
     {
-        augmented_model.reset(dynamic_cast<rpo::AugmentedOcTree*>(AbstractOcTree::read(file)));
+        extended_model.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file)));
 
-        std::cout << "Augmented octree num leaf nodes: " << augmented_model->getNumLeafNodes() << std::endl;
+        std::cout << "Extended octree num leaf nodes: " << extended_model->getNumLeafNodes() << std::endl;
 
         file.close();
     }        
     else
     {
-        std::cerr << "Could not open augmented octree file!" << std::endl;
+        std::cerr << "Could not open extended octree file!" << std::endl;
         return -1;
     }
 
 
     const point3d vertical(0, 0, 1);
 
-    for (rpo::AugmentedOcTree::leaf_iterator it = augmented_model->begin_leafs(), end = augmented_model->end_leafs(); it != end; ++it)
+    for (rpo::ExtendedOcTree::leaf_iterator it = extended_model->begin_leafs(), end = extended_model->end_leafs(); it != end; ++it)
     {
         octomap::ColorOcTreeNode* c_node = color_model->search(it.getKey(), color_model->getTreeDepth());
 
-        rpo::AugmentedOcTreeNode* a_node = augmented_model->search(it.getKey(), augmented_model->getTreeDepth());
+        rpo::ExtendedOcTreeNode* a_node = extended_model->search(it.getKey(), extended_model->getTreeDepth());
 
         if (c_node != nullptr && a_node != nullptr)
         {

@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 
     std::cout 
         << "\nwork folder: "               << parameters.paths.workspace
-        << "\naugmented model file: "      << parameters.paths.augmented_model
+        << "\nextended model file: "      << parameters.paths.extended_model
         << "\ncolor model file: "          << parameters.paths.color_model
         << "\nlamp voxel model file: "     << parameters.paths.lamp_model
         << "\nirradiance maps folder: "    << parameters.paths.irradiance_maps

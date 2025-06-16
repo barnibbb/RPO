@@ -120,28 +120,28 @@ namespace rpo
 
     const double PRECISION = 1e-4;
 
-    class AugmentedOcTree;
+    class ExtendedOcTree;
 
-    class AugmentedOcTreeNode : public OcTreeNode
+    class ExtendedOcTreeNode : public OcTreeNode
     {
     public:
-        friend class AugmentedOcTree;
+        friend class ExtendedOcTree;
             
-        AugmentedOcTreeNode() : OcTreeNode(), m_normal(point3d(0, 0, 0)), m_dose(0), m_type(0) {}
-        AugmentedOcTreeNode(const AugmentedOcTreeNode& node) : OcTreeNode(node), 
+        ExtendedOcTreeNode() : OcTreeNode(), m_normal(point3d(0, 0, 0)), m_dose(0), m_type(0) {}
+        ExtendedOcTreeNode(const ExtendedOcTreeNode& node) : OcTreeNode(node), 
             m_normal(node.m_normal), m_dose(node.m_dose), m_type(node.m_type) {}
 
-        bool operator==(const AugmentedOcTreeNode& node) const
+        bool operator==(const ExtendedOcTreeNode& node) const
         {
             return (node.value == value && node.m_normal == m_normal && node.m_dose == m_dose && node.m_type == m_type);
         }
 
-        bool hasSameAugmentations(const AugmentedOcTreeNode& node) const
+        bool hasSameAugmentations(const ExtendedOcTreeNode& node) const
         {
             return (node.m_normal == m_normal && node.m_dose == m_dose && node.m_type == m_type);
         }
 
-        void copyData(const AugmentedOcTreeNode& from)
+        void copyData(const ExtendedOcTreeNode& from)
         {
             OcTreeNode::copyData(from);
             this->m_normal      = from.getNormal();
@@ -169,31 +169,31 @@ namespace rpo
         int m_type = 1;
     };
 
-    using NodePtr = AugmentedOcTreeNode*;
+    using NodePtr = ExtendedOcTreeNode*;
 
-    class AugmentedOcTree : public OccupancyOcTreeBase<AugmentedOcTreeNode>
+    class ExtendedOcTree : public OccupancyOcTreeBase<ExtendedOcTreeNode>
     {
     public:
 
         // Octomap related methods -------------------------------------------------------------
 
-        AugmentedOcTree(double resolution);
+        ExtendedOcTree(double resolution);
 
-        AugmentedOcTree* create() const { return new AugmentedOcTree(resolution); }
+        ExtendedOcTree* create() const { return new ExtendedOcTree(resolution); }
 
-        std::string getTreeType() const { return "AugmentedOcTree"; }
+        std::string getTreeType() const { return "ExtendedOcTree"; }
 
-        virtual bool pruneNode(AugmentedOcTreeNode* node);
+        virtual bool pruneNode(ExtendedOcTreeNode* node);
 
-        virtual void expandNode(AugmentedOcTreeNode* node);
+        virtual void expandNode(ExtendedOcTreeNode* node);
 
-        virtual bool isNodeCollapsible(const AugmentedOcTreeNode* node) const;
+        virtual bool isNodeCollapsible(const ExtendedOcTreeNode* node) const;
 
         void updateInnerOccupancy();
 
         // RPO related methods -----------------------------------------------------------------
 
-        static std::shared_ptr<AugmentedOcTree> convertToAugmentedOcTree(const ColorOcTree& color_octree);
+        static std::shared_ptr<ExtendedOcTree> convertToExtendedOcTree(const ColorOcTree& color_octree);
 
         void pruneTree();
 
@@ -239,14 +239,14 @@ namespace rpo
 
 
     protected:
-        void updateInnerOccupancyRecurs(AugmentedOcTreeNode* node, unsigned int depth);
+        void updateInnerOccupancyRecurs(ExtendedOcTreeNode* node, unsigned int depth);
 
         class StaticMemberInitializer
         {
         public:
             StaticMemberInitializer() 
             {
-                AugmentedOcTree* tree = new AugmentedOcTree(0.1);
+                ExtendedOcTree* tree = new ExtendedOcTree(0.1);
                 tree->clearKeyRays();
                 AbstractOcTree::registerTreeType(tree);
             }
@@ -254,7 +254,7 @@ namespace rpo
             void ensureLinking() {};
         };
 
-        static StaticMemberInitializer m_augmented_octree_member_init;
+        static StaticMemberInitializer m_extended_octree_member_init;
     };
 }
 
