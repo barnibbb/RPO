@@ -136,7 +136,7 @@ namespace rpo
             return (node.value == value && node.m_normal == m_normal && node.m_dose == m_dose && node.m_type == m_type);
         }
 
-        bool hasSameAugmentations(const ExtendedOcTreeNode& node) const
+        bool hasSameExtensions(const ExtendedOcTreeNode& node) const
         {
             return (node.m_normal == m_normal && node.m_dose == m_dose && node.m_type == m_type);
         }

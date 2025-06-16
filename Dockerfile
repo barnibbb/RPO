@@ -118,5 +118,14 @@ RUN apt-get update && \
 
 # switching back to appuser, so tha container starts there
 USER appuser
-RUN pip install pulp numpy cupy-cuda11x
+RUN pip install pulp cupy-cuda11x open3d
+
+# Install pybind11
+USER root
+RUN apt-get update && \ 
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y \
+    pybind11-dev
+
+USER appuser
 

@@ -9,7 +9,7 @@ int main (int argc, char** argv)
 {
     if (argc != 4)
     {
-        std::cerr << "Usage: rosrun rpo  Augmentation <color_model> <surface> <visualize>" << std::endl;
+        std::cerr << "Usage: rosrun rpo  Extension <color_model> <surface> <visualize>" << std::endl;
         return -1;
     }
 
@@ -53,7 +53,7 @@ int main (int argc, char** argv)
 
         if (visualize)
         {
-            ros::init(argc, argv, "augmentation");
+            ros::init(argc, argv, "extension");
 
             extended_octree->visualize();
         }

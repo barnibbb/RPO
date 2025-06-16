@@ -23,7 +23,7 @@ source devel/setup.bash
 Creating extended octomap format from color octomap:
 
 ```bash
-rosrun rpo Augmentation <color_model> <surface> <visualize>
+rosrun rpo Extension <color_model> <surface> <visualize>
 ```
 
 The mounted data folder should look like this:

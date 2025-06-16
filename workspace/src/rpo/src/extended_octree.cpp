@@ -90,7 +90,7 @@ namespace rpo
         for (unsigned int i = 1; i < 8; ++i)
         {
             if (!nodeChildExists(node, i) || nodeHasChildren(getNodeChild(node, i)) || 
-                !(getNodeChild(node, i)->getValue() == first_child->getValue()) || !node->hasSameAugmentations(*getNodeChild(node, i)))
+                !(getNodeChild(node, i)->getValue() == first_child->getValue()) || !node->hasSameExtensions(*getNodeChild(node, i)))
             {
                 return false;
             }

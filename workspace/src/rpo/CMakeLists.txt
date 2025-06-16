@@ -13,6 +13,7 @@ endif()
 find_package(octomap REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(pybind11 REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -167,3 +168,30 @@ target_link_libraries(RPO
   OpenMP::OpenMP_CXX
   yaml-cpp
 )
+
+
+
+add_library(extended_octree_lib STATIC
+  src/extended_octree.cpp
+)
+
+set_target_properties(extended_octree_lib PROPERTIES 
+  POSITION_INDEPENDENT_CODE ON
+  LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}
+)
+
+target_include_directories(extended_octree_lib PUBLIC include)
+
+pybind11_add_module(extended_octree_module
+  src/octree_bindings.cpp 
+)
+
+target_link_libraries(extended_octree_module PRIVATE
+  extended_octree_lib
+  ${catkin_LIBRARIES}
+)
+
+
+
+
+
