@@ -173,6 +173,7 @@ target_link_libraries(RPO
 
 add_library(extended_octree_lib STATIC
   src/extended_octree.cpp
+  src/dose_calculator.cpp
 )
 
 set_target_properties(extended_octree_lib PROPERTIES 
