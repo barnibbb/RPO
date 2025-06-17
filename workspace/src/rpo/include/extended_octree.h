@@ -127,27 +127,31 @@ namespace rpo
     public:
         friend class ExtendedOcTree;
             
-        ExtendedOcTreeNode() : OcTreeNode(), m_normal(point3d(0, 0, 0)), m_dose(0), m_type(0) {}
-        ExtendedOcTreeNode(const ExtendedOcTreeNode& node) : OcTreeNode(node), 
+        ExtendedOcTreeNode() : OcTreeNode(), m_color(point3d(0, 0, 0)), m_normal(point3d(0, 0, 0)), m_dose(0), m_type(0) {}
+        ExtendedOcTreeNode(const ExtendedOcTreeNode& node) : OcTreeNode(node), m_color(node.m_color),
             m_normal(node.m_normal), m_dose(node.m_dose), m_type(node.m_type) {}
 
         bool operator==(const ExtendedOcTreeNode& node) const
         {
-            return (node.value == value && node.m_normal == m_normal && node.m_dose == m_dose && node.m_type == m_type);
+            return (node.value == value && node.m_color == m_color && node.m_normal == m_normal && node.m_dose == m_dose && node.m_type == m_type);
         }
 
         bool hasSameExtensions(const ExtendedOcTreeNode& node) const
         {
-            return (node.m_normal == m_normal && node.m_dose == m_dose && node.m_type == m_type);
+            return (node.m_color == m_color && node.m_normal == m_normal && node.m_dose == m_dose && node.m_type == m_type);
         }
 
         void copyData(const ExtendedOcTreeNode& from)
         {
             OcTreeNode::copyData(from);
-            this->m_normal      = from.getNormal();
-            this->m_dose        = from.getDose();
-            this->m_type        = from.getType();
+            this->m_color  = from.getColor();
+            this->m_normal = from.getNormal();
+            this->m_dose   = from.getDose();
+            this->m_type   = from.getType();
         }
+
+        inline point3d getColor() const { return m_color; }
+        inline void setColor(const point3d& color) { this->m_color = color; }
 
         inline point3d getNormal() const { return m_normal; }
         inline void setNormal(const point3d& normal) { this->m_normal = normal; }
@@ -162,6 +166,8 @@ namespace rpo
         std::ostream& writeData(std::ostream& s) const;
 
     protected:
+        point3d m_color = point3d(255, 255, 255);
+
         point3d m_normal = point3d(0, 0, 0);
 
         double m_dose = 0;

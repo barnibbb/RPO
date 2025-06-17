@@ -139,9 +139,12 @@ namespace rpo
         {
             rpo::ExtendedOcTreeNode* node = extended_octree->search(it.getKey());
 
+            octomap::ColorOcTreeNode::Color color = it->getColor();
+
             if (node == nullptr)
             {
                 node = extended_octree->updateNode(it.getKey(), true);
+                node->setColor(point3d(color.r, color.g, color.b));
                 node->setNormal(point3d(0, 0, 0));
                 node->setDose(0);
                 node->setType(0);

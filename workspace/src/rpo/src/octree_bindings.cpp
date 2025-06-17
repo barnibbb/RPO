@@ -5,9 +5,6 @@
 
 #include "extended_octree.h"
 
-
-// export PYTHONPATH=/home/appuser/workspace/devel/lib:$PYTHONPATH
-
 namespace py = pybind11;
 
 py::list get_voxels_from_tree(const std::string& filename)
@@ -29,7 +26,11 @@ py::list get_voxels_from_tree(const std::string& filename)
             voxel["y"] = it.getY();
             voxel["z"] = it.getZ();
 
-            // TODO: add color info to extended octree
+            octomap::point3d color = it->getColor();
+
+            voxel["r"] = color.x();
+            voxel["g"] = color.y();
+            voxel["b"] = color.z();
 
             result.append(voxel);
         }
