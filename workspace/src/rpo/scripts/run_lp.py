@@ -128,9 +128,9 @@ def verify(dose_matrix, radiation_times, dose_threshold, time_budget):
 
 if __name__ == '__main__':
 
-    
-
     folder_path = '/home/appuser/data/irradiance_infirmary'
+
+    output_file = '/home/appuser/data/infirmary.sol'
 
     dose_threshold = 280.0
     time_budget = 1800.0
@@ -154,4 +154,9 @@ if __name__ == '__main__':
     
     verify(dose_matrix, radiation_times, dose_threshold, time_budget)
 
+    with open(output_file, 'w') as f:
+        for time in radiation_times:
+            f.write(f"{time:.6f} ")
+
+        f.write("\n")
     

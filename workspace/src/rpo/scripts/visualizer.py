@@ -76,16 +76,80 @@ def get_irradiance_color(voxels):
 
 
 
-if __name__ == '__main__':
-    
-    model_file = '/home/appuser/data/models/infirmary_extended.ot'
-    # irradiance_file = '/home/appuser/data/irradiance_infirmary/32751_32760.bin'
+def get_dose_color(voxels):
+    dose_values = np.array([v["dose"] for v in voxels])
 
-    irradiance_dir = '/home/appuser/data/irradiance_infirmary'
+    threshold = 280.0
+
+    print(f"Elements above threshold: {np.sum(dose_values > 280.0)}")
+
+    norm_doses = np.clip(dose_values / threshold, 0.0, 1.0)
+
+    colors = plt.get_cmap("viridis")(norm_doses)[:, :3]
+
+    # colors = []
+
+    # for v in voxels:
+    #     if v["dose"] >= threshold:
+    #         colors.append([0.0, 1.0, 0.0])
+    #     else:
+    #         colors.append([1.0, 0.0, 0.0])
+
+    # colors = np.array(colors)
+
+    return colors
+
+
+
+def create_voxel_edges(voxel_centers):
+
+    cube_corners = np.array([
+        [0, 0, 0], [1, 0, 0],
+        [1, 1, 0], [0, 1, 0],
+        [0, 0, 1], [1, 0, 1],
+        [1, 1, 1], [0, 1, 1]
+    ]) - 0.5
+
+    edges = np.array([
+        [0, 1], [1, 2], [2, 3], [3, 0],
+        [4, 5], [5, 6], [6, 7], [7, 4],
+        [0, 4], [1, 5], [2, 6], [3, 7]
+    ])
+
+    edge_color = [0, 0, 0]
+
+    all_points = []
+    all_lines = []
+    all_colors = []
+
+    for i, center in enumerate(voxel_centers):
+        offset = i * 8
+        corners = cube_corners * voxel_size + center
+        all_points.append(corners)
+        all_lines.append(edges + offset)
+        all_colors.append([edge_color] * len(edges))
+
+    points = np.vstack(all_points)
+    lines = np.vstack(all_lines)
+    colors = np.vstack(all_colors)
+
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(points)
+    line_set.lines = o3d.utility.Vector2iVector(lines)
+    line_set.colors = o3d.utility.Vector3dVector(colors)
+
+    return line_set
+
+
+
+
+
+def show_irradiance_maps(model_file, irradiance_dir):
     irradiance_files = sorted(glob.glob(os.path.join(irradiance_dir, '*.bin')))
-    index = 0
 
+    index = 0
     initial_voxels = extended_octree_module.get_irradiance_values(model_file, irradiance_files[index])
+
     voxel_centers = np.array([[v["x"], v["y"], v["z"]] for v in initial_voxels])
 
     pcd = o3d.geometry.PointCloud()
@@ -96,14 +160,12 @@ if __name__ == '__main__':
 
     vg = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=voxel_size)
 
-    # o3d.visualization.draw_geometries([vg])
-
     vis = o3d.visualization.VisualizerWithKeyCallback()
     vis.create_window()
     vis.add_geometry(vg)
 
     def update_voxels(vis):
-        global index
+        nonlocal index
         index = (index + 1) % len(irradiance_files)
         print(f"Loading: {irradiance_files[index]}")
         voxels = extended_octree_module.get_irradiance_values(model_file, irradiance_files[index])
@@ -122,5 +184,36 @@ if __name__ == '__main__':
     print("Press → to step through irradiance frames.")
     vis.run()
     vis.destroy_window()
+
+
+
+
+def show_dose(model_file, irradiance_dir, solution_file):
+    voxel_doses = extended_octree_module.get_dose_values(model_file, irradiance_dir, solution_file)
+
+    voxel_centers = np.array([[v["x"], v["y"], v["z"]] for v in voxel_doses])
+
+    voxel_edges = create_voxel_edges(voxel_centers)
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(voxel_centers)
+
+    voxel_colors = get_dose_color(voxel_doses) 
+    pcd.colors = o3d.utility.Vector3dVector(voxel_colors)
+
+    vg = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=voxel_size)
+    o3d.visualization.draw_geometries([voxel_edges, vg])
+
+
+
+if __name__ == '__main__':
+
+    model_file = '/home/appuser/data/models/infirmary_extended.ot'
+    irradiance_dir = '/home/appuser/data/irradiance_infirmary'
+    solution_file = '/home/appuser/data/infirmary.sol'
+    
+    show_dose(model_file, irradiance_dir, solution_file)
+
+    
 
 
