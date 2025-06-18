@@ -128,9 +128,9 @@ def verify(dose_matrix, radiation_times, dose_threshold, time_budget):
 
 if __name__ == '__main__':
 
-    folder_path = '/home/appuser/data/irradiance_infirmary'
+    folder_path = '/home/appuser/data/irradiance_infirmary_2'
 
-    output_file = '/home/appuser/data/infirmary.sol'
+    output_file = '/home/appuser/data/infirmary2.sol'
 
     dose_threshold = 280.0
     time_budget = 1800.0

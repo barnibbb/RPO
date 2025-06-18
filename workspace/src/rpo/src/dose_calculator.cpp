@@ -246,6 +246,10 @@ namespace rpo
     
     void DoseCalculator::computeGridElements()
     {
+        const std::string grid_file = m_parameters.paths.workspace + "/grid.txt";
+
+        std::ofstream ofile(grid_file);
+
         const double grid_distance = m_parameters.computation.grid_distance * m_resolution;
 
         for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
@@ -270,9 +274,14 @@ namespace rpo
                 if (place_new)
                 {
                     m_grid_elements.push_back(it.getKey());
+
+                    ofile << it.getKey()[0] << " " << it.getKey()[1] << " " << it.getKey()[2] << " " 
+                          << it.getX() << " " << it.getY() << " " << it.getZ() << "\n";
                 }
             }
         }
+
+        ofile.close();
 
         std::cout << "Grid elements: " << m_grid_elements.size() << std::endl;
     }

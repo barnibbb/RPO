@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import os
 import glob
 
+from matplotlib.colors import LinearSegmentedColormap
+
 # export PYTHONPATH=/home/appuser/workspace/devel/lib:$PYTHONPATH
 
 voxel_size = 0.05
@@ -141,6 +143,37 @@ def create_voxel_edges(voxel_centers):
     return line_set
 
 
+def get_lamp_positions(solution_file, grid_file):
+    with open(grid_file, 'r') as f:
+        lines = [line.strip().split() for line in f]
+
+        data = [(int(kx), int(ky), int(kz), float(x), float(y), float(z)) for kx, ky, kz, x, y, z in lines]
+
+        data.sort(key=lambda row: (row[0], row[1], row[2]))
+
+    data = np.array(data)
+
+    with open(solution_file, 'r') as f:
+        times = np.array(list(map(float, f.readline().strip().split())))
+
+    z_value = 0.525
+    xy_positions = data[:, 3:5]
+    positions = np.hstack([xy_positions, np.full((len(xy_positions), 1), z_value)])
+
+    max_time = np.max(times)
+    norm_times = times / max_time
+
+    black_red = LinearSegmentedColormap.from_list("black_red", ["black", "red"])
+    colors = black_red(norm_times)[:, :3]
+    #colors = plt.get_cmap("Reds_r")(norm_times)[:, :3]
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(positions)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+
+    vg_lamp = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=2*voxel_size)
+
+    return vg_lamp
 
 
 
@@ -188,7 +221,7 @@ def show_irradiance_maps(model_file, irradiance_dir):
 
 
 
-def show_dose(model_file, irradiance_dir, solution_file):
+def show_dose(model_file, irradiance_dir, solution_file, grid_file):
     voxel_doses = extended_octree_module.get_dose_values(model_file, irradiance_dir, solution_file)
 
     voxel_centers = np.array([[v["x"], v["y"], v["z"]] for v in voxel_doses])
@@ -202,17 +235,25 @@ def show_dose(model_file, irradiance_dir, solution_file):
     pcd.colors = o3d.utility.Vector3dVector(voxel_colors)
 
     vg = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=voxel_size)
-    o3d.visualization.draw_geometries([voxel_edges, vg])
+
+    vg_lamp = get_lamp_positions(solution_file, grid_file)
+
+    o3d.visualization.draw_geometries([voxel_edges, vg, vg_lamp])
+
+    
 
 
 
 if __name__ == '__main__':
 
     model_file = '/home/appuser/data/models/infirmary_extended.ot'
-    irradiance_dir = '/home/appuser/data/irradiance_infirmary'
+    irradiance_dir = '/home/appuser/data/irradiance_infirmary_2'
     solution_file = '/home/appuser/data/infirmary.sol'
+    grid_file = '/home/appuser/data/grid.txt'
     
-    show_dose(model_file, irradiance_dir, solution_file)
+    show_irradiance_maps(model_file, irradiance_dir)
+
+    # show_dose(model_file, irradiance_dir, solution_file, grid_file)
 
     
 
