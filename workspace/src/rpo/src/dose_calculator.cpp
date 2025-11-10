@@ -1,7 +1,7 @@
 #include "dose_calculator.h"
 
 #include <boost/algorithm/string.hpp>
-#include <pcl/features/normal_3d.h>
+#include <pcl/features/normal_3d_omp.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <signal.h>
@@ -845,7 +845,7 @@ namespace rpo
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr octree_points (new pcl::PointCloud<pcl::PointXYZ>);
         pcl::PointCloud<pcl::Normal>::Ptr octree_normals (new pcl::PointCloud<pcl::Normal>);
-        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimation;
+        pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> normal_estimation;
         pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree (new pcl::search::KdTree<pcl::PointXYZ>());
 
         for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)

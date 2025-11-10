@@ -183,10 +183,10 @@ int main(int argc, char** argv)
     c_tree2.expand();
 
     const std::string color_file = "/home/barni/rpo_ws/src/rpo/models/K408_color_mod.ot";
-    const std::string aug_file = "/home/barni/rpo_ws/src/rpo/models/K408_extended_mod.ot";
+    const std::string ext_file = "/home/barni/rpo_ws/src/rpo/models/K408_extended_mod.ot";
 
     c_tree2.write(color_file);
-    a_tree2.write(aug_file);
+    a_tree2.write(ext_file);
 
     return 0;
 }

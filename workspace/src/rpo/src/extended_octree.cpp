@@ -4,7 +4,7 @@
 #include <fstream>
 
 #include <octomap_msgs/Octomap.h>
-#include <pcl/features/normal_3d.h>
+#include <pcl/features/normal_3d_omp.h>
 #include <ros/ros.h>
 
 using namespace octomap;
@@ -1001,7 +1001,7 @@ namespace rpo
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr octree_points (new pcl::PointCloud<pcl::PointXYZ>);
         pcl::PointCloud<pcl::Normal>::Ptr octree_normals (new pcl::PointCloud<pcl::Normal>);
-        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimation;
+        pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> normal_estimation;
         pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree (new pcl::search::KdTree<pcl::PointXYZ>());
 
         for (leaf_iterator it = this->begin_leafs(), end = this->end_leafs(); it != end; ++it)

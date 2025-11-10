@@ -20,13 +20,11 @@ def get_original_colors(voxels):
 
 
 def get_height_colors(voxel_centers):
-    voxel_colors = []
-
     z_values = voxel_centers[:, 2]
     z_min, z_max = z_values.min(), z_values.max()
     z_normalized = (z_values - z_min) / (z_max - z_min)
 
-    colors = np.stack([1.0 - z_normalized, 0.2 * np.ones_like(z_normalized), z_normalized], axis=1)
+    voxel_colors = np.stack([1.0 - z_normalized, 0.2 * np.ones_like(z_normalized), z_normalized], axis=1)
 
     return np.array(voxel_colors)
 
@@ -240,7 +238,24 @@ def show_dose(model_file, irradiance_dir, solution_file, grid_file):
 
     o3d.visualization.draw_geometries([voxel_edges, vg, vg_lamp])
 
+
+
+def show_objects(model_file):
+    voxels = extended_octree_module.get_voxels(model_file)
     
+    voxel_centers = np.array([[v["x"], v["y"], v["z"]] for v in voxels])
+    
+    voxel_edges = create_voxel_edges(voxel_centers)
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(voxel_centers)
+
+    voxel_colors = get_height_colors(voxel_centers)
+    pcd.colors = o3d.utility.Vector3dVector(voxel_colors)
+
+    vg = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=voxel_size)
+
+    o3d.visualization.draw_geometries([voxel_edges, vg])
 
 
 
@@ -248,13 +263,13 @@ if __name__ == '__main__':
 
     model_file = '/home/appuser/data/models/infirmary_extended.ot'
     irradiance_dir = '/home/appuser/data/irradiance_infirmary_2'
-    solution_file = '/home/appuser/data/infirmary.sol'
+    solution_file = '/home/appuser/data/infirmary2.sol'
     grid_file = '/home/appuser/data/grid.txt'
     
     show_irradiance_maps(model_file, irradiance_dir)
 
     # show_dose(model_file, irradiance_dir, solution_file, grid_file)
 
-    
+    # show_objects(model_file)
 
 

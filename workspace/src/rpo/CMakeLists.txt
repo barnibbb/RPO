@@ -52,6 +52,7 @@ add_executable(Extension
 
 target_link_libraries(Extension
   ${catkin_LIBRARIES}
+  OpenMP::OpenMP_CXX
 )
 
 

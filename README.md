@@ -12,6 +12,7 @@
 ```bash
 ./build_docker.sh
 ./run_docker.sh
+docker exec -it rpo_docker /bin/bash
 cd /home/appuser/rpo
 catkin init
 catkin build
