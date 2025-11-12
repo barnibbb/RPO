@@ -106,6 +106,76 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     return times, covered
 
 
+def solve_irradiance_lp_iterative(dose_matrix, dose_threshold, time_budget, n_final, drop_k=1, zero_thersh=0.1):
+
+    active_positions = list(range(dose_matrix.shape[1]))
+    iteration = 0
+
+    while len(active_positions) > n_final:
+        iteration += 1
+        print(f"\n--- Iteration {iteration}, {len(active_positions)} positions active ---")
+
+        # Subset dose matrix
+        sub_matrix = dose_matrix[:, active_positions]
+
+        # Solve LP for current set
+        times, covered = solve_single_lp(sub_matrix, dose_threshold, time_budget)
+
+        times = np.array(times)
+        zero_positions = [i for i, t in enumerate(times) if t < zero_thersh]
+
+        if zero_positions:
+            to_drop = zero_positions
+        else:
+            to_drop = np.argsort(times)[:drop_k].tolist()
+
+        active_positions = [p for i, p in enumerate(active_positions) if i not in to_drop]
+
+    print(f"\nFinal optimization with {len(active_positions)} positions...")
+
+    sub_matrix = dose_matrix[:, active_positions]
+    final_times, final_covered = solve_single_lp(sub_matrix, dose_threshold, time_budget)
+
+    full_times = np.zeros(dose_matrix.shape[1])
+    for idx, pos in enumerate(active_positions):
+        full_times[pos] = final_times[idx]
+
+    return full_times, active_positions, final_covered
+
+
+def solve_single_lp(sub_matrix, dose_threshold, time_budget):
+    n_voxels, n_positions = dose_matrix.shape
+
+    # LP problem initialization
+    prob = pulp.LpProblem("UV_Dose_Optimization", pulp.LpMaximize)
+
+    # Variables
+    t = [pulp.LpVariable(f"t_{j}", lowBound=0) for j in range(n_positions)]
+    z = [pulp.LpVariable(f"z_{i}", cat='Binary') for i in range(n_voxels)]
+
+    # Constraints
+    print("Adding dose constraints ...")
+    for i in range(n_voxels):
+        # print(f"{i}/{n_voxels} voxel")
+        dose_expr = pulp.lpSum(dose_matrix[i][j] * t[j] for j in range(n_positions))
+        prob += (dose_expr >= dose_threshold * z[i])
+
+    # Total radiation time limit
+    print("Adding radiation time limit ...")
+    prob += pulp.lpSum(t) <= time_budget
+
+    # Objective
+    prob += pulp.lpSum(z)
+
+    solver = pulp.COIN_CMD(timeLimit=300)
+    prob.solve(solver)
+
+    times = [pulp.value(var) for var in t]
+    covered = [i for i in range(n_voxels) if pulp.value(z[i]) > 0.5]
+
+    return times, covered
+
+
 
 def verify(dose_matrix, radiation_times, dose_threshold, time_budget):
     doses = dose_matrix @ radiation_times
@@ -141,7 +211,7 @@ if __name__ == '__main__':
 
     start = time.time()
 
-    radiation_times, covered_voxels = solve_irradiance_lp(dose_matrix, dose_threshold, time_budget)
+    radiation_times, active_positions, covered_voxels = solve_irradiance_lp_iterative(dose_matrix, dose_threshold, time_budget, 12)
 
     stop = time.time()
 
