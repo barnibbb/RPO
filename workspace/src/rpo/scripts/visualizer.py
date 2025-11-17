@@ -154,7 +154,7 @@ def get_lamp_positions(solution_file, grid_file):
     with open(solution_file, 'r') as f:
         times = np.array(list(map(float, f.readline().strip().split())))
 
-    z_value = 0.525
+    z_value = 2.425 # 0.525
     xy_positions = data[:, 3:5]
     positions = np.hstack([xy_positions, np.full((len(xy_positions), 1), z_value)])
 
@@ -263,12 +263,14 @@ if __name__ == '__main__':
 
     model_file = '/home/appuser/data/models/infirmary_extended.ot'
     irradiance_dir = '/home/appuser/data/irradiance_infirmary_2'
-    solution_file = '/home/appuser/data/infirmary2.sol'
-    grid_file = '/home/appuser/data/grid.txt'
+    # solution_file = '/home/appuser/data/infirmary2.sol'
+    # grid_file = '/home/appuser/data/grid.txt'
+    solution_file = '/home/appuser/data/ceiling.sol'
+    grid_file = '/home/appuser/data/ceiling_grid.txt'
     
-    show_irradiance_maps(model_file, irradiance_dir)
+    # show_irradiance_maps(model_file, irradiance_dir)
 
-    # show_dose(model_file, irradiance_dir, solution_file, grid_file)
+    show_dose(model_file, irradiance_dir, solution_file, grid_file)
 
     # show_objects(model_file)
 

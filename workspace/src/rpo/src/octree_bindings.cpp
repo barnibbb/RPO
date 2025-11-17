@@ -133,8 +133,12 @@ py::list get_dose_values(const std::string& model_file, const std::string& irrad
 
         for (int i = 0; i < data.size() - 1; ++i) radiation_times.push_back(std::stod(data[i]));
     }
+    else
+    {
+        std::cerr << "Could not open solution file!" << std::endl;
+    }
     
-    std::cout << radiation_times.size() << std::endl;
+    std::cout << "Radiation times: " << radiation_times.size() << std::endl;
     
     // --- Read irradiance maps ---
 
@@ -152,7 +156,7 @@ py::list get_dose_values(const std::string& model_file, const std::string& irrad
 
     std::sort(file_paths.begin(), file_paths.end());
 
-    std::cout << file_paths.size() << std::endl;
+    std::cout << "Number of irradiance files: " << file_paths.size() << std::endl;
 
 
     // --- Compute dose ---
@@ -216,6 +220,5 @@ PYBIND11_MODULE(extended_octree_module, m)
     m.def("get_voxels", &get_voxels_from_tree, "Load voxels from extended octree file.");
     m.def("get_irradiance_values", &get_irradiance_values, "Load irradiance values from submap.");
     m.def("get_dose_values", &get_dose_values, "Load dose values for radiation plan.");
-
 }
 

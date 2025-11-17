@@ -30,7 +30,6 @@ def load_all_maps(folder_path):
 
     for file in position_files:
         irr_map = read_map(os.path.join(folder_path, file))
-        # print(f"{file}\t{len(irr_map)}")
         irradiance_data.append(irr_map)
         all_keys.update(irr_map.keys())
 
@@ -47,7 +46,44 @@ def load_all_maps(folder_path):
     return dose_matrix, key_to_index, position_files
 
 
-def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
+def load_initial_map(initial_map_path, key_to_index, t_initial, dose_threshold):
+    irr_map = read_map(initial_map_path)
+
+    n_voxels = len(key_to_index)
+    initial_dose = np.zeros(n_voxels, dtype=np.float32)
+
+    additional_elements = 0
+    completed_elements = 0
+
+    for key, value in irr_map.items():
+        if key in key_to_index:
+            i = key_to_index[key]
+            initial_dose[i] = value * t_initial
+            if value * t_initial >= dose_threshold:
+                completed_elements += 1
+        else:
+            if value * t_initial >= dose_threshold:
+                additional_elements += 1
+
+    print(f"Additional elements: {additional_elements}\n")
+    print(f"Completed elements: {completed_elements}\n")
+
+    return initial_dose
+
+def filter_for_lp(dose_matrix, initial_dose, dose_threshold):
+    remaining_mask = initial_dose < dose_threshold
+
+    filtered_matrix = dose_matrix[remaining_mask, :]
+
+    remaining_indices = np.where(remaining_mask)[0]
+    satisfied_indices = np.where(~remaining_mask)[0]
+
+    return filtered_matrix, remaining_indices, satisfied_indices
+
+
+
+
+def solve_irradiance_lp(dose_matrix, effective_threshold, time_budget):
     n_voxels, n_positions = dose_matrix.shape
 
     # LP problem initialization
@@ -56,41 +92,19 @@ def solve_irradiance_lp(dose_matrix, dose_threshold, time_budget):
     # Variables
     t = [pulp.LpVariable(f"t_{j}", lowBound=0) for j in range(n_positions)]
     z = [pulp.LpVariable(f"z_{i}", cat='Binary') for i in range(n_voxels)]
-    # z = [pulp.LpVariable(f"z_{i}", lowBound=0, upBound=1, cat="Continuous") for i in range(n_voxels)]
-    u = [pulp.LpVariable(f"u_{j}", cat='Binary') for j in range(n_positions)] # Num pos minimization
-    
-
 
     # Constraints
     print("Adding dose constraints ...")
     for i in range(n_voxels):
-        # print(f"{i}/{n_voxels} voxel")
         dose_expr = pulp.lpSum(dose_matrix[i][j] * t[j] for j in range(n_positions))
-        prob += (dose_expr >= dose_threshold * z[i])
+        prob += (dose_expr >= effective_threshold * z[i])
 
     # Total radiation time limit
     print("Adding radiation time limit ...")
     prob += pulp.lpSum(t) <= time_budget
 
-    # Num pos minimization
-    M = time_budget
-
-    print("Adding binary variables for position selection ...")
-    for j in range(n_positions):
-        prob += (t[j] <= M * u[j])
-
-
     # Objective
     prob += pulp.lpSum(z)
-
-    # Objective with minimization
-    # penalty_weight = 100.0
-    # prob += pulp.lpSum(z[i] for i in range(n_voxels)) - penalty_weight * pulp.lpSum(u[j] for j in range(n_positions))
-
-    # Maximize lamp count
-    # max_active_lamps = 50  # Set your limit here
-    # Optional: limit the number of used lamps
-    # prob += pulp.lpSum(u[j] for j in range(n_positions)) <= max_active_lamps
 
     # Solve
     print("Run solver")
@@ -228,6 +242,33 @@ def verify(dose_matrix, radiation_times, dose_threshold, time_budget):
     print(f"Total radiation time used: {total_time:.2f} seconds (budget: {time_budget})")
 
 
+
+def verify2(filtered_matrix, radiation_times, initial_dose, remaining_indices, satisfied_indices, dose_threshold, time_budget):
+    lp_dose = filtered_matrix @ radiation_times
+
+    final_dose_remaining = initial_dose[remaining_indices] + lp_dose
+
+    covered_remaining = final_dose_remaining > dose_threshold
+
+    num_covered_remaining = np.sum(covered_remaining)
+
+    num_satisfied_initial = len(satisfied_indices)
+
+    total_voxels = len(initial_dose)
+    total_covered = num_satisfied_initial + num_covered_remaining
+
+    total_time = np.sum(radiation_times)
+
+    print("----- VERIFICATION -----")
+    print(f"Total voxels: {total_voxels}")
+    print(f"Initially satisfied: {num_satisfied_initial}")
+    print(f"Satisfied after LP: {num_covered_remaining}")
+    print(f"TOTAL satisfied: {total_covered}")
+    print(f"Coverage percentage: {total_covered / total_voxels:.3f}")
+    print(f"Total radiation time used: {total_time:.2f} (budget: {time_budget})")
+
+
+
 # Sol: 46498 60402
 
 
@@ -237,26 +278,35 @@ if __name__ == '__main__':
 
     output_file = '/home/appuser/data/infirmary2.sol'
 
+    initial_map_path = '/home/appuser/data/32768_32768_32816.bin'
+
     dose_threshold = 280.0
     time_budget = 1800.0
 
     dose_matrix, key_index, files = load_all_maps(folder_path)
 
+    initial_dose = load_initial_map(initial_map_path, key_index, time_budget, dose_threshold)
+
+    filtered_matrix, remaining_indices, satisfied_indices = filter_for_lp(dose_matrix, initial_dose, dose_threshold)
+
+    print(f"Total voxels: {len(initial_dose)}")
+    print(f"Already satisfied by initial radiation: {len(satisfied_indices)}")
+    print(f"Remaining voxels requiring LP optimization: {len(remaining_indices)}")
+
+    remaining_required_dose = dose_threshold - initial_dose[remaining_indices]
+    remaining_required_dose = np.maximum(0, remaining_required_dose)
+
+    # effective_threshold = np.maximum(0, dose_threshold - initial_dose)
+
     print(dose_matrix.shape)
 
     start = time.time()
 
-    two_stage_lp(dose_matrix, dose_threshold, time_budget, 14)
+    radiation_times, covered_voxels = solve_irradiance_lp(dose_matrix, dose_threshold, time_budget)
 
-    two_stage_lp(dose_matrix, dose_threshold, time_budget, 16)
+    # radiation_times, covered_voxels = solve_irradiance_lp(filtered_matrix, remaining_required_dose, time_budget)
 
-    two_stage_lp(dose_matrix, dose_threshold, time_budget, 18)
-
-    two_stage_lp(dose_matrix, dose_threshold, time_budget, 20)
-
-
-
-    radiation_times, covered_voxels = solve_irradiance_lp_iterative(dose_matrix, dose_threshold, time_budget, 90)
+    # radiation_times, covered_voxels = solve_irradiance_lp_iterative(dose_matrix, dose_threshold, time_budget, 90)
 
     stop = time.time()
 
@@ -267,6 +317,9 @@ if __name__ == '__main__':
     print(f"All elements: {dose_matrix.shape[0]}")
     print(f"Ratio of covered voxels: {len(covered_voxels) / dose_matrix.shape[0]}")
     
+
+    # verify2(filtered_matrix, radiation_times, initial_dose, remaining_indices, satisfied_indices, dose_threshold, time_budget)
+
     verify(dose_matrix, radiation_times, dose_threshold, time_budget)
 
     with open(output_file, 'w') as f:

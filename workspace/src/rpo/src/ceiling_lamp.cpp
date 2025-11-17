@@ -134,7 +134,8 @@ int main(int argc, char** argv)
     targets[1] = 0.025;
     targets[2] = boundaries[5] - 0.075;    
 
-    std::cout << "Target elements: " << targets.size() << "\n";
+    std::cout << "Target elements: " << targets.size() << " " 
+        << targets[0] << " " << targets[1] << " " << targets[2] << "\n";
 
 
     // --- Visibility check ---
@@ -195,7 +196,7 @@ int main(int argc, char** argv)
                 {
                     const octomap::point3d difference = target - origin;
 
-                    irradiance = parameters.lamp.power * std::abs(std::cos(normal.angleTo(difference))) / (4 * M_PI * std::pow(difference.norm(), 2));     
+                    irradiance = parameters.lamp.power * std::abs(std::cos(normal.angleTo(difference.normalized()))) / (4 * M_PI * std::pow(difference.norm(), 2));     
                 }
             }
 

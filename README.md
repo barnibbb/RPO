@@ -17,6 +17,7 @@ cd /home/appuser/rpo
 catkin init
 catkin build
 source devel/setup.bash
+export PYTHONPATH=/home/appuser/workspace/devel/lib:$PYTHONPATH
 ```
 
 ## Run experiment
