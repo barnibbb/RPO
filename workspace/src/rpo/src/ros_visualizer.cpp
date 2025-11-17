@@ -4,6 +4,13 @@
 #include <octomap_msgs/Octomap.h>
 #include <signal.h>
 
+#include <set>
+#include <queue>
+#include <cmath>
+#include <limits>
+#include <unordered_map>
+#include <vector>
+
 namespace rpo
 {
     void handler2(int s)
@@ -514,5 +521,261 @@ namespace rpo
             m_model_publisher.publish(message);
         }
     }
+
+
+
+    void ROSVisualizer::loadActiveIndices(const std::string& sol_file)
+    {
+        std::ifstream infile(sol_file);
+
+        if (!infile)
+        {
+            std::cerr << "Cannot open solution file" << std::endl;
+            return;
+        }
+
+        std::vector<int> active_indices;
+
+        int idx = 0;
+        double t;
+        while (infile >> t)
+        {
+            if (t > 1e-6)
+            {
+                active_indices.push_back(idx);
+            }
+            ++idx;
+        }
+
+        std::cout << "Active indices: " << active_indices.size() << std::endl;
+
+
+        m_active_indices.reserve(active_indices.size());
+
+        for (int idx : active_indices)
+        {
+            auto& key = m_grid_elements[idx];
+            m_active_indices.emplace_back(key[0], key[1]);
+        }
+
+        std::cout << "Active grids: " << m_active_indices.size() << std::endl;
+    }
+
+
+
+    Path ROSVisualizer::computePath(const std::pair<int, int>& start, const std::pair<int,int>& goal)
+    {
+        Path result;
+        result.cost = std::numeric_limits<double>::infinity();
+
+        if (start == goal)
+        {
+            result.cost = 0.0;
+            result.path.push_back(start);
+            return result;
+        }
+
+        static const int dx[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
+        static const int dy[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+        static const double move_cost[8] = 
+            { 1, std::sqrt(2), 1, std::sqrt(2), 1, std::sqrt(2), 1, std::sqrt(2) };
+    
+        std::priority_queue<PQItem, std::vector<PQItem>, std::greater<PQItem>> open;
+
+        std::unordered_map<Key2D, double, Key2DHasher> gscore;
+        std::unordered_map<Key2D, std::pair<int,int>, Key2DHasher> parent;
+
+        Key2D s { start.first, start.second };
+        Key2D t { goal.first, goal.second };
+    
+        gscore[s] = 0.0;
+        parent[s] = start;
+        open.push({0.0, start});
+
+        auto heuristic = [&](int x, int y) {
+            return std::sqrt((x - t.x)*(x - t.x) + (y - t.y)*(y - t.y));
+        };
+
+        while (!open.empty())
+        {
+            auto [fcur, cur] = open.top();
+            open.pop();
+
+            int cx = cur.first;
+            int cy = cur.second;
+            Key2D ck { cx, cy };
+
+            if (cx == t.x && cy == t.y)
+            {
+                // Goal reached
+                result.cost = gscore[ck];
+
+                // Reconstruct path
+                std::vector<std::pair<int, int>> rev;
+                Key2D curk = t;
+
+                while (!(curk.x == s.x && curk.y == s.y))
+                {
+                    rev.push_back({curk.x, curk.y});
+                    auto p = parent[curk];
+                    curk = Key2D{p.first, p.second};
+                }
+
+                rev.push_back(start);
+
+                std::reverse(rev.begin(), rev.end());
+                result.path = rev;
+                return result;
+            }
+
+            double gcur = gscore[ck];
+
+            // Explore neighbors
+            for (int k = 0; k < 8; ++k)
+            {
+                int nx = cx + dx[k];
+                int ny = cy + dy[k];
+
+                if (m_traversable.count({nx, ny}) == 0)
+                    continue;
+
+                double newg = gcur + move_cost[k];
+                Key2D nk{nx, ny};
+
+                if (!gscore.count(nk) || newg < gscore[nk])
+                {
+                    gscore[nk] = newg;
+                    parent[nk] = {cx,cy};
+                    double f = newg + heuristic(nx, ny);
+
+                    open.push({f, {nx, ny}});
+                }
+            }
+        }
+    
+        return result;
+    }
+
+
+
+    void ROSVisualizer::computeGraph()
+    {
+        int n = m_active_indices.size();
+        m_graph.assign(n, std::vector<Path>(n));
+
+        for (int i = 0; i < n; ++i)
+        {
+            for (int j = 0; j < n; ++j)
+            {
+                if (i == j)
+                {
+                    m_graph[i][j] = { 0.0, {m_active_indices[i]} };
+                    continue;
+                }
+                m_graph[i][j] = computePath(m_active_indices[i], m_active_indices[j]);
+            }
+        }
+    }
+
+
+
+    void ROSVisualizer::exportGraph(const std::string& tsp_file)
+    {
+        int n = m_graph.size();
+
+        std::ofstream ofs(tsp_file);
+
+        ofs << "NAME: radiation positions\nTYPE: TSP\nDIMENSION: " << n << "\n";
+        ofs << "EDGE_WEIGHT_TYPE: EXPLICIT\nEDGE_WEIGHT_FORMAT: FULL_MATRIX\nEDGE_WEIGHT_SECTION\n";
+
+        for (int i = 0; i < n; ++i)
+        {
+            for (int j = 0; j < n; ++j)
+            {
+                ofs << static_cast<int>(m_graph[i][j].cost) << " ";
+            }
+            ofs << "\n";
+        }
+        ofs << "EOF\n";
+    }
+
+
+
+    void ROSVisualizer::readOrder(const std::string& order_file)
+    {
+        std::cout << "Read order...\n";
+
+        std::ifstream in_file(order_file);
+
+        if (!in_file.is_open())
+        {
+            std::cout << "Error opening file for reading." << std::endl;
+            return;
+        }
+
+        std::string line;
+
+        // The solution is written in a single line
+        if (std::getline(in_file, line))
+        {
+            std::vector<std::string> data; 
+            boost::split(data, line, boost::is_any_of(" "));
+
+            for (int i = 2; i < data.size(); ++i)
+            {
+                // TSP - only one node per cluster
+                m_optimal_order.push_back(std::stoi(data[i]));
+            }
+        }
+
+        in_file.close();
+    }
+
+
+    void ROSVisualizer::buildPath(const std::string& path_file, const std::string& pos_file)
+    {
+        std::ofstream ofs(path_file);
+
+        double z = m_color_model->coordToKey(0.525);
+
+        for (size_t k = 0; k < m_optimal_order.size() - 1; ++k)
+        {
+            int i = m_optimal_order[k];
+            int j = m_optimal_order[k+1];
+
+            const auto& segment = m_graph[i][j].path;
+
+            for (auto& p : segment)
+            {
+                octomap::OcTreeKey key(p.first, p.second, z);
+
+                octomap::point3d point = m_color_model->keyToCoord(key, m_color_model->getTreeDepth());
+
+                ofs << point.x() << " " << point.y() << " " << point.z() << "\n";
+
+                // octomap::ColorOcTreeNode* node = m_color_model->updateNode(key, true);
+
+                // node->setColor(255, 0, 0);
+            }
+        }
+
+        ofs.close();
+
+        ofs.open(pos_file);
+
+        for (auto& p : m_active_indices)
+        {
+            octomap::OcTreeKey key(p.first, p.second, z);
+
+            octomap::point3d point = m_color_model->keyToCoord(key, m_color_model->getTreeDepth());
+
+            ofs << point.x() << " " << point.y() << " " << point.z() << "\n";
+        }
+
+        ofs.close();
+
+        // m_color_model->write(path_file);
+    }
 }
+
  

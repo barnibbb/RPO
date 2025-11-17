@@ -195,5 +195,18 @@ target_link_libraries(extended_octree_module PRIVATE
 
 
 
+# Path planning
+add_executable(PathPlanning
+  dev/src/path_planning.cpp
+  src/ros_visualizer.cpp
+  src/dose_calculator.cpp
+  src/extended_octree.cpp
+  src/parameters.cpp
+)
+
+target_link_libraries(PathPlanning
+  ${catkin_LIBRARIES}
+  yaml-cpp
+)
 
 

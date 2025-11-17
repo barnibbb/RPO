@@ -1,5 +1,6 @@
 #include <unordered_map>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "extended_octree.h"
@@ -101,5 +102,7 @@ namespace rpo
 
         std::vector<BreakPoints> m_break_points_x, m_break_points_y, m_break_points_z;
         std::vector<BreakPoints> m_break_points_xn, m_break_points_yn, m_break_points_zn;
+
+        std::set<std::pair<int, int>> m_traversable;
     };
 }

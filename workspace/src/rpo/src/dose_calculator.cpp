@@ -239,6 +239,13 @@ namespace rpo
         }
 
 
+        // Store ground zone as traversable region
+        for (const auto& key : m_ground_zone_elements)
+        {
+            m_traversable.insert({key[0], key[1]});
+        }
+
+
         std::cout << "Ground zone elements: " << m_ground_zone_elements.size() << std::endl;
     }   
 

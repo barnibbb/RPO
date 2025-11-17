@@ -154,7 +154,7 @@ def get_lamp_positions(solution_file, grid_file):
     with open(solution_file, 'r') as f:
         times = np.array(list(map(float, f.readline().strip().split())))
 
-    z_value = 2.425 # 0.525
+    z_value = 0.525 # 2.425 # 0.525
     xy_positions = data[:, 3:5]
     positions = np.hstack([xy_positions, np.full((len(xy_positions), 1), z_value)])
 
@@ -172,6 +172,54 @@ def get_lamp_positions(solution_file, grid_file):
     vg_lamp = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=2*voxel_size)
 
     return vg_lamp
+
+
+
+def get_lamp_positions2(pos_file):
+    coords = []
+    with open(pos_file, "r") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            gx, gy, gz = map(float, line.split())
+            coords.append([gx, gy, gz])
+    coords = np.array(coords)
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(coords)
+
+    red = np.tile(np.array([[0.0, 0.0, 1.0]]), (len(coords), 1))
+    pcd.colors = o3d.utility.Vector3dVector(red)
+
+    vg_lamp = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, 2*voxel_size)
+
+    return vg_lamp
+
+
+
+
+def load_path_voxels(path_file):
+    coords = []
+    with open(path_file, "r") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            gx, gy, gz = map(float, line.split())
+            coords.append([gx, gy, gz])
+    return np.array(coords)
+
+
+
+def create_path_voxels(path_xyz, voxel_size):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(path_xyz)
+
+    red = np.tile(np.array([[1.0, 0.0, 0.0]]), (len(path_xyz), 1))
+    pcd.colors = o3d.utility.Vector3dVector(red)
+
+    vg_path = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size)
+
+    return vg_path
 
 
 
@@ -239,6 +287,30 @@ def show_dose(model_file, irradiance_dir, solution_file, grid_file):
     o3d.visualization.draw_geometries([voxel_edges, vg, vg_lamp])
 
 
+def show_path(model_file, irradiance_dir, path_file, pos_file):
+    voxel_doses = extended_octree_module.get_dose_values(model_file, irradiance_dir, solution_file)
+
+    voxel_centers = np.array([[v["x"], v["y"], v["z"]] for v in voxel_doses])
+
+    voxel_edges = create_voxel_edges(voxel_centers)
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(voxel_centers)
+
+    voxel_colors = get_dose_color(voxel_doses) 
+    pcd.colors = o3d.utility.Vector3dVector(voxel_colors)
+
+    vg = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=voxel_size)
+
+    path_xyz = load_path_voxels(path_file)
+
+    vg_path = create_path_voxels(path_xyz, voxel_size)
+
+    vg_lamp = get_lamp_positions2(pos_file)
+
+    o3d.visualization.draw_geometries([voxel_edges, vg, vg_path, vg_lamp])
+
+
 
 def show_objects(model_file):
     voxels = extended_octree_module.get_voxels(model_file)
@@ -263,15 +335,17 @@ if __name__ == '__main__':
 
     model_file = '/home/appuser/data/models/infirmary_extended.ot'
     irradiance_dir = '/home/appuser/data/irradiance_infirmary_2'
-    # solution_file = '/home/appuser/data/infirmary2.sol'
-    # grid_file = '/home/appuser/data/grid.txt'
-    solution_file = '/home/appuser/data/ceiling.sol'
-    grid_file = '/home/appuser/data/ceiling_grid.txt'
+    solution_file = '/home/appuser/data/infirmary2.sol'
+    grid_file = '/home/appuser/data/grid.txt'
+    # solution_file = '/home/appuser/data/ceiling.sol'
+    # grid_file = '/home/appuser/data/ceiling_grid.txt'
+    path_file = '/home/appuser/data/path.txt'
+    pos_file = '/home/appuser/data/pos.txt'
     
     # show_irradiance_maps(model_file, irradiance_dir)
 
-    show_dose(model_file, irradiance_dir, solution_file, grid_file)
+    # show_dose(model_file, irradiance_dir, solution_file, grid_file)
 
     # show_objects(model_file)
 
-
+    show_path(model_file, irradiance_dir, path_file, pos_file)

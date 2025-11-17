@@ -129,3 +129,15 @@ RUN apt-get update && \
 
 USER appuser
 
+# Install LKH
+USER root
+RUN cd /home/appuser && \
+    wget http://webhotel4.ruc.dk/~keld/research/LKH-3/LKH-3.0.13.tgz && \
+    tar xzvf LKH-3.0.13.tgz && \
+    cd LKH-3.0.13 && \
+    make -j$(nproc)
+
+ENV PATH="/home/appuser/LKH-3.0.13:${PATH}"
+
+USER appuser
+
