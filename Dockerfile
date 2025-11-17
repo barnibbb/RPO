@@ -139,5 +139,26 @@ RUN cd /home/appuser && \
 
 ENV PATH="/home/appuser/LKH-3.0.13:${PATH}"
 
+# Copy qsopt
+USER root
+COPY qsopt /home/appuser/qsopt
+
+
+
+# Install concorde
+USER root
+RUN cd /home/appuser && \
+    wget http://www.math.uwaterloo.ca/tsp/concorde/downloads/codes/src/co031219.tgz --no-check-certificate && \
+    tar xzf co031219.tgz && \
+    cd concorde && \
+    CFLAGS="-fPIC" ./configure --with-qsopt=/home/appuser/qsopt && \
+    make -j$(nproc)
+
+ENV PATH="/home/appuser/concorde/TSP:${PATH}"
+
+ENV CONCORDE_DIR=/home/appuser/concorde
+ENV QSOPT_DIR=/home/appuser/qsopt
+
+
 USER appuser
 
