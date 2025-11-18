@@ -135,14 +135,13 @@ int main (int argc, char** argv)
 
         for (unsigned int i = 0; i < parameters.optimization.max_generations; ++i)
         {
+            std::cout << i + 1 << " generation\n";
+
             visualizer.compute(generator.getPopulation(), generator.getIndexOfUnevaluated());
 
             generator.selectSurvivals();
 
-            if (generator.getBestPlan().second >= parameters.computation.target_coverage)
-            {
-                break;
-            }
+            if (generator.getBestPlan().second >= parameters.computation.target_coverage) break;
 
             generator.recombine();
 
@@ -266,7 +265,7 @@ int main (int argc, char** argv)
         fs << "Final number of positions: " << final_number_of_positions << std::endl;
         fs << "Overall duration: "          << duration_overall.count()  << std::endl;
         
-        if (parameters.computation.type == 7 || parameters.computation.type == 8)
+        if ((parameters.computation.type == 7 || parameters.computation.type == 8) && !parameters.computation.load_maps)
         {
             fs << "Precomputation time: "   << precomp_time.count() << "\n\n\n";
         }
@@ -283,7 +282,7 @@ int main (int argc, char** argv)
     std::cout << "Final number of positions: " << final_number_of_positions << std::endl;
     std::cout << "Overall duration: "          << duration_overall.count()  << std::endl;
     
-    if (parameters.computation.type == 7 || parameters.computation.type == 8)
+    if ((parameters.computation.type == 7 || parameters.computation.type == 8) && !parameters.computation.load_maps)
     {
         std::cout << "Precomputation time: "   << precomp_time.count() << "\n\n\n";
     }

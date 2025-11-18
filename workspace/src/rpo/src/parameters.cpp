@@ -60,7 +60,10 @@ namespace rpo
         parameters.optimization.disinfection_time        = params["optimization"]["disinfection_time"].as<double>();  
         parameters.optimization.increment                = params["optimization"]["increment"].as<double>();  
         parameters.optimization.verify                   = params["optimization"]["verify"].as<bool>();  
-        parameters.optimization.condition                = params["optimization"]["condition"].as<bool>();  
+        parameters.optimization.condition                = params["optimization"]["condition"].as<bool>();
+
+        parameters.optimization.individual_size = parameters.optimization.element_size * parameters.optimization.start_positions;
+        parameters.optimization.num_positions = parameters.optimization.start_positions;  
         
 
         return parameters; 
