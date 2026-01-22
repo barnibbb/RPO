@@ -192,7 +192,9 @@ def solve_single_lp(sub_matrix, dose_threshold, time_budget):
     print("Objective ...")
     prob += pulp.lpSum(z)
 
+    # solver = pulp.PULP_CBC_CMD(threads=12, timeLimit=300, msg=False)
     solver = pulp.COIN_CMD(timeLimit=300, msg=False)
+    # solver = pulp.HiGHS_CMD(threads=12, timeLimit=300, msg=False)
     print("Run solver ...")
     prob.solve(solver)
 
@@ -302,7 +304,9 @@ if __name__ == '__main__':
 
     start = time.time()
 
-    radiation_times, covered_voxels = solve_irradiance_lp(dose_matrix, dose_threshold, time_budget)
+    two_stage_lp(dose_matrix, dose_threshold, time_budget, 16)
+
+    # radiation_times, covered_voxels = solve_irradiance_lp(dose_matrix, dose_threshold, time_budget)
 
     # radiation_times, covered_voxels = solve_irradiance_lp(filtered_matrix, remaining_required_dose, time_budget)
 

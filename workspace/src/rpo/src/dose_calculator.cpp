@@ -384,6 +384,41 @@ namespace rpo
 
 
 
+    std::vector<double> DoseCalculator::getGridIndices(const RadiationPlan& plan) const
+    {
+        const int element_size = m_parameters.optimization.element_size;
+
+        std::vector<double> grid_indices(m_grid_elements.size(), 0.0);
+
+        for (int i = 0; i < plan.first.size(); i += element_size)
+        {
+            double min_distance = std::numeric_limits<double>::max();
+
+            int grid_index = -1;
+                
+            for (int j = 0; j < m_grid_elements.size(); ++j)
+            {
+                point3d grid_position = m_extended_model->keyToCoord(m_grid_elements[j], m_depth);
+
+                point3d lamp_position(plan.first[i], plan.first[i + 1], m_ground_level);
+
+                const double distance = (grid_position - lamp_position).norm();
+                
+                if (distance < min_distance)
+                {
+                    min_distance = distance;
+                    grid_index = j;
+                }
+            }
+
+            grid_indices[grid_index] = plan.first[i + 2];
+        }
+
+        return grid_indices;
+    }
+
+
+
     std::vector<OcTreeKey> DoseCalculator::getGridElements() const
     {
         return m_grid_elements;

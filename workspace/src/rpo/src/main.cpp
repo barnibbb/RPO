@@ -135,7 +135,7 @@ int main (int argc, char** argv)
 
         for (unsigned int i = 0; i < parameters.optimization.max_generations; ++i)
         {
-            std::cout << i + 1 << " generation\n";
+            // std::cout << i + 1 << " generation\n";
 
             visualizer.compute(generator.getPopulation(), generator.getIndexOfUnevaluated());
 
@@ -238,6 +238,23 @@ int main (int argc, char** argv)
 
     auto duration_overall = std::chrono::duration_cast<std::chrono::seconds>(stop_overall - start_overall);
 
+
+
+    // Active indices
+    std::vector<double> active_indices = visualizer.getGridIndices(best_plan);
+
+    std::fstream fi(parameters.paths.grid_indices, std::ios::out);
+
+    if (fi.is_open())
+    {
+        for (int i = 0; i < active_indices.size() - 1; ++i) 
+        {
+            fi << active_indices[i] << " ";
+        }
+        fi << active_indices[active_indices.size() - 1] << std::endl;
+
+        fi.close();
+    }
 
 
     // Final verification ----------------------------------------------------------

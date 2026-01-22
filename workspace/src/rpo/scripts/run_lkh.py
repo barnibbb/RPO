@@ -86,7 +86,7 @@ def run_lkh(tsp_file, sol_file):
 if __name__ == "__main__":
 
     if len(sys.argv) < 3:
-        print("Usage: python3 lkh.py <tsp_file> <sol_file>")
+        print("Usage: python3 run_lkh.py <tsp_file> <sol_file>")
         sys.exit(1)
 
     tsp_file = sys.argv[1]

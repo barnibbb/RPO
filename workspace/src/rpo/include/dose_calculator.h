@@ -31,6 +31,7 @@ namespace rpo
         std::vector<double> getRayTargets() const;
         std::multimap<double, double> getGroundZone() const;
         RadiationPlan getGrid(const RadiationPlan& plan) const;
+        std::vector<double> getGridIndices(const RadiationPlan& plan) const;
         std::vector<OcTreeKey> getGridElements() const;
         double getGroundLevel() const;
 

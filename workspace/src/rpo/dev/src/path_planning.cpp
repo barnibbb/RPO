@@ -57,12 +57,17 @@ int main (int argc, char** argv)
 
     // Load active indices
     const std::string sol_file = "/home/appuser/data/infirmary2.sol";
+    const std::string report_file = "/home/appuser/data/active_indices.txt";
     const std::string tsp_file = "/home/appuser/data/infirmary.tsp";
     const std::string order_file = "/home/appuser/data/infirmary.order";
     const std::string path_file = "/home/appuser/data/path.txt";
     const std::string pos_file = "/home/appuser/data/pos.txt";
 
-    visualizer.loadActiveIndices(sol_file);
+    // visualizer.loadActiveIndices(sol_file);
+
+    //visualizer.loadActiveIndices1(report_file);
+
+    visualizer.loadActiveIndices2();
 
     visualizer.computeGraph();
 

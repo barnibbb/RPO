@@ -12,6 +12,7 @@ namespace rpo
         std::string irradiance_maps;
         std::string short_report;
         std::string long_report;
+        std::string grid_indices;
     };
 
     struct PreprocessingParams

@@ -60,6 +60,7 @@ namespace rpo
 
 
         void loadActiveIndices(const std::string& sol_file);
+        void loadActiveIndices2();
         Path computePath(const std::pair<int, int>& start, const std::pair<int,int>& goal);
         void computeGraph();
         void exportGraph(const std::string& tsp_file);

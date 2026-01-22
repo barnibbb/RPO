@@ -8,6 +8,7 @@
 #include <queue>
 #include <cmath>
 #include <limits>
+#include <numeric>
 #include <unordered_map>
 #include <vector>
 
@@ -560,6 +561,26 @@ namespace rpo
 
         std::cout << "Active grids: " << m_active_indices.size() << std::endl;
     }
+        
+        
+        
+        
+    void ROSVisualizer::loadActiveIndices2()
+    {
+        std::vector<int> active_indices(m_grid_elements.size());
+
+        std::iota(active_indices.begin(), active_indices.end(), 0);
+
+        m_active_indices.reserve(active_indices.size());
+
+        for (int idx : active_indices)
+        {
+            auto& key = m_grid_elements[idx];
+            m_active_indices.emplace_back(key[0], key[1]);
+        }
+
+        std::cout << "Active grids: " << m_active_indices.size() << std::endl;
+    }
 
 
 
@@ -723,9 +744,11 @@ namespace rpo
 
             for (int i = 2; i < data.size(); ++i)
             {
-                // TSP - only one node per cluster
                 m_optimal_order.push_back(std::stoi(data[i]));
             }
+
+            // Close loop
+            // m_optimal_order.push_back(std::stoi(data[2]));
         }
 
         in_file.close();
@@ -738,12 +761,21 @@ namespace rpo
 
         double z = m_color_model->coordToKey(0.525);
 
+        double length1 = 0.0;
+        double length2 = 0.0;
+        bool first_point = true;
+        octomap::point3d prev_point;
+
         for (size_t k = 0; k < m_optimal_order.size() - 1; ++k)
         {
             int i = m_optimal_order[k];
             int j = m_optimal_order[k+1];
 
+            std::cout << i << " " << j << "\n";
+
             const auto& segment = m_graph[i][j].path;
+
+            length1 += m_graph[i][j].cost;
 
             for (auto& p : segment)
             {
@@ -752,6 +784,17 @@ namespace rpo
                 octomap::point3d point = m_color_model->keyToCoord(key, m_color_model->getTreeDepth());
 
                 ofs << point.x() << " " << point.y() << " " << point.z() << "\n";
+
+                if (!first_point)
+                {
+                    length2 += (point - prev_point).norm();
+                }
+                else
+                {
+                    first_point = false;
+                }
+
+                prev_point = point;
 
                 // octomap::ColorOcTreeNode* node = m_color_model->updateNode(key, true);
 
@@ -773,6 +816,9 @@ namespace rpo
         }
 
         ofs.close();
+
+        std::cout << "Path length1: " << length1 * m_resolution << std::endl;
+        std::cout << "Path length2: " << length2 << std::endl;
 
         // m_color_model->write(path_file);
     }
