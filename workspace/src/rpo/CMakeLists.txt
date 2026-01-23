@@ -171,6 +171,23 @@ target_link_libraries(RPO
 )
 
 
+# Run GA based optimization for varying z
+add_executable(Vertical
+  src/vertical.cpp
+  src/plan_generator.cpp
+  src/ros_visualizer.cpp
+  src/dose_calculator.cpp
+  src/extended_octree.cpp
+  src/parameters.cpp
+)
+
+target_link_libraries(Vertical
+  ${catkin_LIBRARIES}
+  OpenMP::OpenMP_CXX
+  yaml-cpp
+)
+
+
 
 add_library(extended_octree_lib STATIC
   src/extended_octree.cpp

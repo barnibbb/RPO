@@ -26,10 +26,12 @@ namespace rpo
         parameters.preprocessing.safety_radius = params["preprocessing"]["safety_radius"].as<double>();
 
         // Lamp attributes
-        parameters.lamp.height     = params["lamp_attributes"]["height"].as<double>();
-        parameters.lamp.offset     = params["lamp_attributes"]["offset"].as<double>();
-        parameters.lamp.power      = params["lamp_attributes"]["power"].as<double>();
-        parameters.lamp.range      = params["lamp_attributes"]["range"].as<double>();
+        parameters.lamp.height  = params["lamp_attributes"]["height"].as<double>();
+        parameters.lamp.offset  = params["lamp_attributes"]["offset"].as<double>();
+        parameters.lamp.power   = params["lamp_attributes"]["power"].as<double>();
+        parameters.lamp.range   = params["lamp_attributes"]["range"].as<double>();
+        parameters.lamp.lower_z = params["lamp_attributes"]["lower_z"].as<int>();
+        parameters.lamp.upper_z = params["lamp_attributes"]["upper_z"].as<int>();
 
         // Dose computation
         parameters.computation.type            = params["dose_computation"]["type"].as<int>();

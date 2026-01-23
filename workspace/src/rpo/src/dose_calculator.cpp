@@ -532,6 +532,55 @@ namespace rpo
 
 
 
+    // Irradiance map computation for z shifts
+    void DoseCalculator::computeIrradianceMaps2()
+    {
+        computeGeneralVisibility();
+        create2DModel();
+        computeBreakPoints();
+
+        int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
+        m_irradiance_maps.resize(m_grid_elements.size() * num_steps);
+
+
+        #pragma omp parallel for collapse(2)
+        for (int i = 0; i < m_grid_elements.size(); ++i)
+        {
+            for (int j = m_parameters.lamp.lower_z; j <= m_parameters.lamp.upper_z; ++j)
+            {
+                point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+                position.z() = m_parameters.lamp.center + j * 0.2;
+
+                m_irradiance_maps[i * num_steps + j] = computeIrradianceForPosition(position, false, i, j);
+
+                OcTreeKey plan_element_key;
+                m_extended_model->coordToKeyChecked(position, m_depth, plan_element_key);
+
+                saveBinaryMap2(plan_element_key, m_irradiance_maps[i * num_steps + j]);
+            }
+        }
+
+
+        for (const auto& map : m_irradiance_maps)      
+        {
+            for (const auto& element : map)
+            {
+                if (element.second > 0)
+                {
+                    m_verification_elements.insert(element.first);
+                }
+            }
+        } 
+
+        std::cout << "Verification elements: " << m_verification_elements.size() << std::endl;
+    }
+
+
+
+
+
+
+
     void DoseCalculator::loadIrradianceMaps()
     {
         if (m_parameters.computation.store_maps)
@@ -575,6 +624,41 @@ namespace rpo
                 }
             }
         }  
+    }
+
+
+
+    void DoseCalculator::loadIrradianceMaps2()
+    {
+        int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
+        m_irradiance_maps.resize(m_grid_elements.size() * num_steps);
+
+        #pragma omp parallel for collapse(2)
+        for (int i = 0; i < m_grid_elements.size(); ++i)
+        {
+            for (int j = m_parameters.lamp.lower_z; j <= m_parameters.lamp.upper_z; ++j)
+            {
+                point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+                position.z() = m_parameters.lamp.center + j * 0.2;
+
+                OcTreeKey plan_element_key = m_extended_model->coordToKey(position, m_depth);
+
+                m_irradiance_maps[i * num_steps + j] = loadBinaryMap2(plan_element_key);
+            }
+        }
+
+        for (const auto& map : m_irradiance_maps)
+        {
+            for (const auto& element : map)
+            {
+                if (element.second > 0)
+                {
+                    m_verification_elements.insert(element.first);
+                }
+            }
+        }
+
+        std::cout << "Verification elements: " << m_verification_elements.size() << std::endl;
     }
 
 
@@ -809,7 +893,7 @@ namespace rpo
                 m_optimization_elements.insert(element);
             }
         }
-        else if (type == 7 || type == 8)
+        else if (type == 7 || type == 8 || type == 12)
         {
             for (const auto& element : m_verification_elements)
             {
@@ -849,7 +933,7 @@ namespace rpo
 
             if (OcTreeKey key; m_extended_model->coordToKeyChecked(point_2d, m_depth, key))
             {
-                if (m_parameters.computation.type != 8)
+                if (m_parameters.computation.type != 8 && m_parameters.computation.type != 12)
                 {
                     m_optimization_elements.insert(key);
                     // ot.updateNode(key, true);
@@ -1223,9 +1307,11 @@ namespace rpo
             {
                 lamp_position.z() = m_parameters.lamp.center;
 
+                if (m_parameters.computation.type == 12) lamp_position.z() += elements[i + 3] * 0.2;
+
                 PlanElement plan_element { lamp_position, elements[i + 2] };
 
-                exposure_maps[i / element_size] = computeDoseForPlanElement(plan_element, false);
+                exposure_maps[i / element_size] = computeDoseForPlanElement(plan_element, false, elements[i + 3]);
             }
             else
             {  
@@ -1291,13 +1377,13 @@ namespace rpo
 
 
 
-    ExposureMap DoseCalculator::computeDoseForPlanElement(const PlanElement& plan_element, bool verify)
+    ExposureMap DoseCalculator::computeDoseForPlanElement(const PlanElement& plan_element, bool verify, int z_step)
     {
         signal (SIGINT, handler);
 
         ExposureMap dose_map;
 
-        if (verify || (m_parameters.computation.type != 7 && m_parameters.computation.type != 8))
+        if (verify || (m_parameters.computation.type != 7 && m_parameters.computation.type != 8 && m_parameters.computation.type != 12))
         {
             dose_map = computeIrradianceForPosition(plan_element.first, verify);
         }   
@@ -1311,7 +1397,7 @@ namespace rpo
             {
                 point3d grid_position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
 
-                grid_position.z() = m_parameters.lamp.center; 
+                grid_position.z() = plan_element.first.z(); // m_parameters.lamp.center; 
 
                 const double distance = (grid_position - plan_element.first).norm();
 
@@ -1320,6 +1406,12 @@ namespace rpo
                     min_distance = distance;
                     grid_index = i;
                 }
+            }
+
+            if (m_parameters.computation.type == 12)
+            {
+                grid_index *= m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
+                grid_index += z_step;
             }
 
             if (m_parameters.computation.store_maps)
@@ -1343,7 +1435,7 @@ namespace rpo
 
 
 
-    ExposureMap DoseCalculator::computeIrradianceForPosition(const point3d& lamp_position, bool verify, int index)
+    ExposureMap DoseCalculator::computeIrradianceForPosition(const point3d& lamp_position, bool verify, int index, int z_step)
     {
         signal (SIGINT, handler);
 
@@ -1358,13 +1450,13 @@ namespace rpo
         }
         else
         {
-            if (m_parameters.computation.type == 7 || m_parameters.computation.type == 8)
+            if (m_parameters.computation.type == 7 || m_parameters.computation.type == 8 || m_parameters.computation.type == 12)
             {
                 if (m_parameters.computation.filter)
                 {
                     for (const auto& element : m_base_reachable_elements)
                     {
-                        irradiance_map[element] = computeIrradianceForElement(lamp_position, element, index);
+                        irradiance_map[element] = computeIrradianceForElement(lamp_position, element, index, z_step);
                     } 
                 }
                 else
@@ -1389,7 +1481,7 @@ namespace rpo
 
 
 
-    double DoseCalculator::computeIrradianceForElement(const point3d& lamp_position, const OcTreeKey& key, int index)
+    double DoseCalculator::computeIrradianceForElement(const point3d& lamp_position, const OcTreeKey& key, int index, int z_step)
     {
         signal (SIGINT, handler);
 
@@ -1429,6 +1521,9 @@ namespace rpo
             break;
         case 11:
             irradiance = computeIrradianceType5(lamp_position, key);
+            break;
+        case 12:
+            irradiance = computeIrradianceType4(lamp_position, key, index, z_step);
             break;
         default:
             break;
@@ -1583,7 +1678,7 @@ namespace rpo
 
 
     // 4 - Tiseni (cylindrical), Mine - 3D model, 3D distance, 3D angle, cylindrical light source
-    double DoseCalculator::computeIrradianceType4(const point3d& lamp_position, const OcTreeKey& key, int index)
+    double DoseCalculator::computeIrradianceType4(const point3d& lamp_position, const OcTreeKey& key, int index, int z_step)
     {
         double irradiance = 0;
 
@@ -1619,10 +1714,11 @@ namespace rpo
 
                 for (int i = 1; i < m_ray_targets.size() - 1; ++i)
                 {
-                    center.z() = m_ray_targets[i];
+                    center.z() = m_ray_targets[i] + z_step * 0.2;
 
-                    if ((m_parameters.computation.type != 8 && compute3DVisibility(center, point)) ||
-                        (m_parameters.computation.type == 8 && compute3DVisibility2(center, point, index)))
+                    bool hybrid = (m_parameters.computation.type == 8 || m_parameters.computation.type == 12) ? true : false;
+
+                    if ((!hybrid && compute3DVisibility(center, point)) || (hybrid && compute3DVisibility2(center, point, index))) 
                     {
                         const point3d difference = point - center;
 

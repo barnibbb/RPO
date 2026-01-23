@@ -166,7 +166,7 @@ namespace rpo
         double base_time = m_parameters.optimization.disinfection_time / static_cast<double>(m_parameters.optimization.num_positions);
 
         std::normal_distribution<double> distribution_t(base_time, 0.1 * base_time);
-
+        
         bool good_position = false;
 
         int counter = 0;
@@ -216,6 +216,13 @@ namespace rpo
         }
 
         individual[index + 2] = distribution_t(*m_engine);
+
+        // Z coordinate
+        if (m_parameters.optimization.element_size == 4)
+        {
+            std::uniform_int_distribution<> distribution_z(m_parameters.lamp.lower_z, m_parameters.lamp.upper_z);
+            individual[index + 3] = static_cast<double>(distribution_z(*m_engine));
+        }
     }
 
 
@@ -557,6 +564,17 @@ namespace rpo
                         mutant[j + 2] = old_gene;
                     }
                 }
+
+                // Added z coordinate
+                if (m_parameters.optimization.element_size == 4 && distribution(*m_engine) < gene_mutation_probability)
+                {
+                    int step = (distribution(*m_engine) < 0.5) ? -1 : 1;
+                    double new_gene = mutant[j + 3] + step;
+
+                    // Ensure boundaries
+                    if (new_gene < 0) new_gene = 0;
+                    if (new_gene > 5) new_gene = 5;
+                }   
             }
 
             normalizeRadiationTime(mutant, false);

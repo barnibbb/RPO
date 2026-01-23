@@ -31,6 +31,8 @@ namespace rpo
         double range = 20;
         double center;
         double top;
+        int lower_z = 0;
+        int upper_z = 5;
     };
 
     struct DoseComputationParams
