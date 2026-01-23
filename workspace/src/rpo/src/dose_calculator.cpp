@@ -2,6 +2,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <pcl/features/normal_3d_omp.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <signal.h>
@@ -784,7 +785,7 @@ namespace rpo
     {
         int type = m_parameters.computation.type;
 
-        if (type == 1 || type == 2)
+        if (type == 1 || type == 2 || type == 11)
         {
             create2DModel();
         }
@@ -797,7 +798,6 @@ namespace rpo
             for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
             {
                 m_optimization_elements.insert(it.getKey());
-                
             }
         }
         else if (type == 10)
@@ -838,6 +838,8 @@ namespace rpo
 
         std::cout << "Original size: " << m_extended_model->getNumLeafNodes() << std::endl;
 
+        // octomap::ColorOcTree ot(0.05);
+
         // Step 1: Map obstacles to the x-y plane
         for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
@@ -850,6 +852,7 @@ namespace rpo
                 if (m_parameters.computation.type != 8)
                 {
                     m_optimization_elements.insert(key);
+                    // ot.updateNode(key, true);
                 }
 
                 if ((point_3d.z() - m_ground_level) > 0.0001)
@@ -862,6 +865,8 @@ namespace rpo
         // Step 2: Insert 2D obstacles to the extended 3D model
         for (const auto& key : m_obstacle_2d)
         {
+            // octomap::ColorOcTreeNode* cnode = ot.search(key, m_depth); cnode->setColor(255, 0, 0);
+
             NodePtr node = m_extended_model->search(key, m_depth);
 
             if (node == nullptr)
@@ -872,10 +877,15 @@ namespace rpo
 
         std::cout << "Extended size: " << m_extended_model->getNumLeafNodes() << std::endl;
 
+        // ot.write("/home/appuser/data/random.ot");
 
         if (m_parameters.computation.type == 2)
         {
-            compute2DNormalVectors();
+            compute2DNormalVectors2();
+        }
+        else if (m_parameters.computation.type == 11)
+        {
+            compute2DNormalVectors2();
         }
     }
 
@@ -908,6 +918,9 @@ namespace rpo
 
         normal_estimation.compute(*octree_normals);
 
+        pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>());
+        cloud_with_normals->resize(octree_points->size());
+
         for (size_t i = 0; i < octree_points->size(); ++i)
         {
             const pcl::PointXYZ pcl_point = octree_points->points[i];
@@ -919,14 +932,126 @@ namespace rpo
                 const pcl::Normal normal = octree_normals->at(i);
 
                 point3d normal_2d = point3d(normal.normal_x, normal.normal_y, normal.normal_z);
-
                 normal_2d.z() = 0;
-
                 normal_2d.normalize();
-
                 node->setNormal(normal_2d);
+
+                pcl::PointNormal pn;
+                pn.x = pcl_point.x;
+                pn.y = pcl_point.y;
+                pn.z = pcl_point.z;
+                pn.normal_x = normal_2d.x();
+                pn.normal_y = normal_2d.y();
+                pn.normal_z = normal_2d.z();
+
+                cloud_with_normals->points[i] = pn; 
             }
         }
+
+
+        cloud_with_normals->width = cloud_with_normals->points.size();
+        cloud_with_normals->height = 1;
+        cloud_with_normals->is_dense = false;
+
+        pcl::io::savePLYFileBinary("/home/appuser/data/ground_with_normals.ply", *cloud_with_normals);
+    }
+
+
+
+    void DoseCalculator::compute2DNormalVectors2()
+    {
+        signal (SIGINT, handler);
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr octree_points (new pcl::PointCloud<pcl::PointXYZ>);
+
+        for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
+        {
+            const point3d point = it.getCoordinate();      
+
+            if (std::abs(point.z() - (m_ground_level - 1)) < 0.0001 )
+            {
+                octree_points->push_back(pcl::PointXYZ(point.x(), point.y(), point.z()));
+            }
+        }
+
+        pcl::PointCloud<pcl::Normal>::Ptr octree_normals(new pcl::PointCloud<pcl::Normal>);
+        octree_normals->resize(octree_points->size());
+
+
+        pcl::PointCloud<pcl::PointXY>::Ptr cloud_xy(new pcl::PointCloud<pcl::PointXY>());
+        for (const auto& p : octree_points->points) cloud_xy->push_back({p.x, p.y});
+
+
+        pcl::search::KdTree<pcl::PointXY>::Ptr tree2d(new pcl::search::KdTree<pcl::PointXY>());
+        tree2d->setInputCloud(cloud_xy);
+
+
+        std::vector<int> indices;
+        std::vector<float> sqr_dists;
+
+
+        for (size_t i = 0; i < cloud_xy->size(); ++i)
+        {
+            indices.clear(); sqr_dists.clear();
+            tree2d->radiusSearch(i, 2 * m_resolution, indices, sqr_dists);
+
+            if (indices.size() < 3) continue;
+
+            Eigen::Vector2f mean(0,0);
+            for (int j : indices) mean += Eigen::Vector2f(cloud_xy->points[j].x, cloud_xy->points[j].y);
+
+            mean /= indices.size();
+
+            Eigen::Matrix2f cov = Eigen::Matrix2f::Zero();
+
+            for (int j : indices)
+            {
+                Eigen::Vector2f d(cloud_xy->points[j].x - mean.x(), cloud_xy->points[j].y - mean.y());
+                cov += d * d.transpose();
+            }
+
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix2f> eig(cov);
+            Eigen::Vector2f n2 = eig.eigenvectors().col(0).normalized();
+
+            octree_normals->points[i].normal_x = n2.x();
+            octree_normals->points[i].normal_y = n2.y();
+            octree_normals->points[i].normal_z = 0.0f;
+        }
+
+        pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>());
+        cloud_with_normals->resize(octree_points->size());
+
+        for (size_t i = 0; i < octree_points->size(); ++i)
+        {
+            const pcl::PointXYZ pcl_point = octree_points->points[i];
+
+            const point3d point(pcl_point.data[0], pcl_point.data[1], pcl_point.data[2]);
+
+            if (NodePtr node = m_extended_model->search(point, m_depth); node != nullptr)
+            {
+                const pcl::Normal normal = octree_normals->at(i);
+
+                point3d normal_2d = point3d(normal.normal_x, normal.normal_y, normal.normal_z);
+                node->setNormal(normal_2d);
+
+                pcl::PointNormal pn;
+                pn.x = pcl_point.x;
+                pn.y = pcl_point.y;
+                pn.z = pcl_point.z;
+                pn.normal_x = normal_2d.x();
+                pn.normal_y = normal_2d.y();
+                pn.normal_z = normal_2d.z();
+
+                cloud_with_normals->points[i] = pn; 
+            }
+        }
+
+
+        cloud_with_normals->width = cloud_with_normals->points.size();
+        cloud_with_normals->height = 1;
+        cloud_with_normals->is_dense = false;
+
+        pcl::io::savePLYFileBinary("/home/appuser/data/ground_with_normals2.ply", *cloud_with_normals);
     }
 
 
@@ -1302,6 +1427,9 @@ namespace rpo
         case 10:
             irradiance = computeIrradianceType4(lamp_position, key);
             break;
+        case 11:
+            irradiance = computeIrradianceType5(lamp_position, key);
+            break;
         default:
             break;
         }
@@ -1508,6 +1636,70 @@ namespace rpo
 
         return irradiance;
     }
+
+
+
+    double DoseCalculator::computeIrradianceType5(const point3d& lamp_position, const OcTreeKey& key) const
+    {
+        double irradiance = 0;
+
+        const point3d point = m_extended_model->keyToCoord(key, m_depth);
+        const point3d lamp_position_2d(lamp_position.x(), lamp_position.y(), m_ground_level - 1);
+
+        if (std::abs(lamp_position_2d.x() - point.x()) < 0.1 || std::abs(lamp_position_2d.y() - point.y()) < 0.1) return irradiance;
+
+
+
+        // static double base_coverage = (((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height)) * m_parameters.preprocessing.safety_radius;
+
+        NodePtr node = m_extended_model->search(key, m_depth);
+
+        // if (node->getType() == 2)
+        // {
+        //     const point3d base_point = point3d(lamp_position.x(), lamp_position.y(), m_ground_level);
+
+        //     if (std::abs(base_point.x() - point.x()) < base_coverage && std::abs(base_point.y() - point.y()) < base_coverage)
+        //     {
+        //         return 0;
+        //     }
+        // }
+
+        const double distance = (point - lamp_position).norm();
+
+        if (!std::isnan(distance) && distance < m_parameters.lamp.range)
+        {
+            const point3d normal = (node != nullptr) ? node->getNormal() : point3d(0, 0, 1);
+
+            if (!std::isnan(normal.norm()))
+            {
+                const double L = m_resolution;
+
+                const double coefficient = m_parameters.lamp.power / (4 * M_PI * m_parameters.lamp.height);
+
+                point3d center = lamp_position;
+
+                if (compute2DVisibility(lamp_position_2d, point))
+                {
+                    for (int i = 1; i < m_ray_targets.size() - 1; ++i)
+                    {
+                        center.z() = m_ray_targets[i];
+
+                        const point3d floor_point = point3d(point.x(), point.y(), m_ground_level + m_resolution);
+
+                        const point3d difference = floor_point - center;
+
+                        const double integral = computeIrradianceIntegral(difference, normal, L);
+
+                        irradiance += coefficient * integral;
+                    }
+                }
+            }
+        }
+
+        return irradiance;
+    }
+
+
 
 
 

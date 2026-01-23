@@ -49,6 +49,7 @@ namespace rpo
         void setOptimizationElements();
         void create2DModel();
         void compute2DNormalVectors();
+        void compute2DNormalVectors2();
         void computeLeastEfficientElements();
         bool isHiddenElement(const point3d& point) const;
 
@@ -62,6 +63,7 @@ namespace rpo
         double computeIrradianceType2(const point3d& lamp_position, const OcTreeKey& key) const;
         double computeIrradianceType3(const point3d& lamp_position, const OcTreeKey& key) const;
         double computeIrradianceType4(const point3d& lamp_position, const OcTreeKey& key, int index = -1);
+        double computeIrradianceType5(const point3d& lamp_position, const OcTreeKey& key) const;
         double computeIrradianceIntegral(const point3d& distance, const point3d& normal, double L) const;
         bool compute2DVisibility(const point3d& lamp_position, const point3d& element) const;
         bool compute3DVisibility(const point3d& lamp_position, const point3d& element) const;
