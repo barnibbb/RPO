@@ -9,7 +9,7 @@ int main (int argc, char** argv)
     auto start_overall = std::chrono::high_resolution_clock::now();
 
     // Read input parameters -------------------------------------------------------
-    if (argc != 2)
+    if (argc < 2)
     {
         std::cerr << "Usage: rosrun rpo RPO <parameter_file>" << std::endl;
         return -1;
@@ -78,11 +78,11 @@ int main (int argc, char** argv)
     visualizer.computeGridElements();
     visualizer.computeRayTargets();
 
-    std::chrono::milliseconds precomp_time;
+    auto precomp_time = std::chrono::seconds::zero();
 
 
     // Cut random elements on lab model
-    // visualizer.filter();
+    if (argc == 3) visualizer.filter();
     
 
     // Get irradiance maps ---------------------------------------------------------
@@ -94,7 +94,7 @@ int main (int argc, char** argv)
         
         auto stop_precomputation = std::chrono::high_resolution_clock::now();
     
-        precomp_time = std::chrono::duration_cast<std::chrono::milliseconds>(stop_precomputation - start_precomputation);
+        precomp_time = std::chrono::duration_cast<std::chrono::seconds>(stop_precomputation - start_precomputation);
 
         std::cout << "Precomputation time: " << precomp_time.count() << std::endl;
     }
@@ -243,7 +243,7 @@ int main (int argc, char** argv)
     // Active indices
     std::vector<double> active_indices = visualizer.getGridIndices(best_plan);
 
-    std::fstream fi(parameters.paths.grid_indices, std::ios::out);
+    std::fstream fi(parameters.paths.active_indices, std::ios::out);
 
     if (fi.is_open())
     {
@@ -273,23 +273,16 @@ int main (int argc, char** argv)
 
 
     // Final report ----------------------------------------------------------------
-    std::fstream fs(parameters.paths.short_report, std::ios::out | std::ios::app);
+    std::fstream fs(parameters.paths.brief_report, std::ios::out | std::ios::app);
 
     if (fs.is_open())
     {
-        fs << "Optimized coverage: "        << optimized_coverage        << std::endl;
-        fs << "Verified coverage: "         << verified_coverage         << std::endl;
-        fs << "Final number of positions: " << final_number_of_positions << std::endl;
-        fs << "Overall duration: "          << duration_overall.count()  << std::endl;
-        
-        if ((parameters.computation.type == 7 || parameters.computation.type == 8) && !parameters.computation.load_maps)
-        {
-            fs << "Precomputation time: "   << precomp_time.count() << "\n\n\n";
-        }
-        else
-        {
-            fs << "\n\n";
-        }
+        fs << parameters.computation.type << " ";
+        fs << optimized_coverage          << " ";
+        fs << verified_coverage           << " ";
+        fs << final_number_of_positions   << " ";
+        fs << precomp_time.count()        << " ";
+        fs << duration_overall.count()    << std::endl;
         
         fs.close();
     }
@@ -297,16 +290,8 @@ int main (int argc, char** argv)
     std::cout << "Optimized coverage: "        << optimized_coverage        << std::endl;
     std::cout << "Verified coverage: "         << verified_coverage         << std::endl;
     std::cout << "Final number of positions: " << final_number_of_positions << std::endl;
-    std::cout << "Overall duration: "          << duration_overall.count()  << std::endl;
-    
-    if ((parameters.computation.type == 7 || parameters.computation.type == 8) && !parameters.computation.load_maps)
-    {
-        std::cout << "Precomputation time: "   << precomp_time.count() << "\n\n\n";
-    }
-    else
-    {
-        std::cout << "\n\n";
-    }
+    std::cout << "Precomputation time: "       << precomp_time.count()      << std::endl;
+    std::cout << "Overall duration: "          << duration_overall.count()  << "\n\n\n";
 
     return 0;
 }

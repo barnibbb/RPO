@@ -10,9 +10,11 @@ namespace rpo
         std::string color_model;
         std::string lamp_model;
         std::string irradiance_maps;
+        std::string brief_report;
         std::string short_report;
         std::string long_report;
         std::string grid_indices;
+        std::string active_indices;
     };
 
     struct PreprocessingParams
@@ -29,6 +31,7 @@ namespace rpo
         double offset = 0.37;
         double power = 80;
         double range = 20;
+        double step_size = 0.2;
         double center;
         double top;
         int lower_z = 0;

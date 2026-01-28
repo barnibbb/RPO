@@ -16,9 +16,11 @@ namespace rpo
         parameters.paths.color_model     = parameters.paths.workspace + params["paths"]["color_model"].as<std::string>();
         parameters.paths.lamp_model      = parameters.paths.workspace + params["paths"]["lamp_model"].as<std::string>();
         parameters.paths.irradiance_maps = parameters.paths.workspace + params["paths"]["irradiance_maps"].as<std::string>();
-        parameters.paths.short_report    = parameters.paths.workspace + "/short_report.txt";
-        parameters.paths.long_report     = parameters.paths.workspace + "/long_report.txt";
-        parameters.paths.grid_indices    = parameters.paths.workspace + "/active_indices.txt";
+        parameters.paths.brief_report    = parameters.paths.workspace + params["paths"]["brief_report"].as<std::string>();
+        parameters.paths.short_report    = parameters.paths.workspace + params["paths"]["short_report"].as<std::string>();
+        parameters.paths.long_report     = parameters.paths.workspace + params["paths"]["long_report"].as<std::string>();
+        parameters.paths.active_indices  = parameters.paths.workspace + params["paths"]["active_indices"].as<std::string>();
+        parameters.paths.grid_indices    = parameters.paths.workspace + params["paths"]["grid_indices"].as<std::string>();
 
         // Preprocessing
         parameters.preprocessing.depth         = params["preprocessing"]["depth"].as<int>();
@@ -26,12 +28,13 @@ namespace rpo
         parameters.preprocessing.safety_radius = params["preprocessing"]["safety_radius"].as<double>();
 
         // Lamp attributes
-        parameters.lamp.height  = params["lamp_attributes"]["height"].as<double>();
-        parameters.lamp.offset  = params["lamp_attributes"]["offset"].as<double>();
-        parameters.lamp.power   = params["lamp_attributes"]["power"].as<double>();
-        parameters.lamp.range   = params["lamp_attributes"]["range"].as<double>();
-        parameters.lamp.lower_z = params["lamp_attributes"]["lower_z"].as<int>();
-        parameters.lamp.upper_z = params["lamp_attributes"]["upper_z"].as<int>();
+        parameters.lamp.height    = params["lamp_attributes"]["height"].as<double>();
+        parameters.lamp.offset    = params["lamp_attributes"]["offset"].as<double>();
+        parameters.lamp.power     = params["lamp_attributes"]["power"].as<double>();
+        parameters.lamp.range     = params["lamp_attributes"]["range"].as<double>();
+        parameters.lamp.step_size = params["lamp_attributes"]["step_size"].as<double>();
+        parameters.lamp.lower_z   = params["lamp_attributes"]["lower_z"].as<int>();
+        parameters.lamp.upper_z   = params["lamp_attributes"]["upper_z"].as<int>();
 
         // Dose computation
         parameters.computation.type            = params["dose_computation"]["type"].as<int>();

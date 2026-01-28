@@ -227,3 +227,7 @@ target_link_libraries(PathPlanning
 )
 
 
+# Multiple experiments
+add_executable(EXP dev/src/experiment.cpp) 
+
+

@@ -254,9 +254,7 @@ namespace rpo
     
     void DoseCalculator::computeGridElements()
     {
-        const std::string grid_file = m_parameters.paths.workspace + "/grid.txt";
-
-        std::ofstream ofile(grid_file);
+        std::ofstream ofile(m_parameters.paths.grid_indices);
 
         const double grid_distance = m_parameters.computation.grid_distance * m_resolution;
 
@@ -549,7 +547,7 @@ namespace rpo
             for (int j = m_parameters.lamp.lower_z; j <= m_parameters.lamp.upper_z; ++j)
             {
                 point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
-                position.z() = m_parameters.lamp.center + j * 0.2;
+                position.z() = m_parameters.lamp.center + j * m_parameters.lamp.step_size;
 
                 m_irradiance_maps[i * num_steps + j] = computeIrradianceForPosition(position, false, i, j);
 
@@ -639,7 +637,7 @@ namespace rpo
             for (int j = m_parameters.lamp.lower_z; j <= m_parameters.lamp.upper_z; ++j)
             {
                 point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
-                position.z() = m_parameters.lamp.center + j * 0.2;
+                position.z() = m_parameters.lamp.center + j * m_parameters.lamp.step_size;
 
                 OcTreeKey plan_element_key = m_extended_model->coordToKey(position, m_depth);
 
@@ -869,7 +867,7 @@ namespace rpo
     {
         int type = m_parameters.computation.type;
 
-        if (type == 1 || type == 2 || type == 11)
+        if (type == 1 || type == 2 || type == 11 || type == 13)
         {
             create2DModel();
         }
@@ -1307,7 +1305,7 @@ namespace rpo
             {
                 lamp_position.z() = m_parameters.lamp.center;
 
-                if (m_parameters.computation.type == 12) lamp_position.z() += elements[i + 3] * 0.2;
+                if (m_parameters.computation.type == 12) lamp_position.z() += elements[i + 3] * m_parameters.lamp.step_size;
 
                 PlanElement plan_element { lamp_position, elements[i + 2] };
 
@@ -1525,6 +1523,9 @@ namespace rpo
         case 12:
             irradiance = computeIrradianceType4(lamp_position, key, index, z_step);
             break;
+        case 13:
+            irradiance = computeIrradianceType1(lamp_position, key);
+            break;
         default:
             break;
         }
@@ -1547,7 +1548,7 @@ namespace rpo
 
         if (!std::isnan(distance) && distance < m_parameters.lamp.range && distance > m_parameters.preprocessing.safety_radius)
         {
-            if(compute2DVisibility(lamp_position_2d, point))
+            if(m_parameters.computation.type == 13 || compute2DVisibility(lamp_position_2d, point))
             {
                 irradiance = m_parameters.lamp.power / (4 * M_PI * std::pow(distance, 2));
             }
@@ -1714,7 +1715,7 @@ namespace rpo
 
                 for (int i = 1; i < m_ray_targets.size() - 1; ++i)
                 {
-                    center.z() = m_ray_targets[i] + z_step * 0.2;
+                    center.z() = m_ray_targets[i] + z_step * m_parameters.lamp.step_size;
 
                     bool hybrid = (m_parameters.computation.type == 8 || m_parameters.computation.type == 12) ? true : false;
 

@@ -241,7 +241,7 @@ namespace rpo
             }
         }
 
-        std::cout << m_extended_model->getNumLeafNodes() << "\n";
+        std::cout << "Elements after filtering for lab " << m_extended_model->getNumLeafNodes() << "\n";
     }
 
 

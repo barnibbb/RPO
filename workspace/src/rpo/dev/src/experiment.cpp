@@ -4,14 +4,17 @@
 int main (int argc, char** argv)
 {
     const std::string param_files[] = {
-        "/2d/params_8.txt"
+        "lab/params_lab_xy.yaml 1",
+        "office/params_office_xy.yaml",
+        "infirmary/params_infirmary_xy.yaml",
+        "cafe/params_cafe_xy.yaml"
     };
 
-    const std::string executable = "rosrun rpo RPO /home/barni/rpo_ws/src/rpo/experiments/";           
+    const std::string executable = "rosrun rpo RPO /home/appuser/data/";           
 
     for (const auto& param_file : param_files)
     {
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 2; ++i)
         {
             const std::string command = executable + param_file; 
 
