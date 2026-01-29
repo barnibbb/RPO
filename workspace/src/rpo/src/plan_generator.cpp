@@ -572,8 +572,11 @@ namespace rpo
                     double new_gene = mutant[j + 3] + step;
 
                     // Ensure boundaries
-                    if (new_gene < 0) new_gene = 0;
-                    if (new_gene > 5) new_gene = 5;
+                    if (new_gene < m_parameters.lamp.lower_z) new_gene = m_parameters.lamp.lower_z;
+                    if (new_gene > m_parameters.lamp.upper_z) new_gene = m_parameters.lamp.upper_z;
+
+                    // Modify the gene
+                    mutant[j + 3] = new_gene;
                 }   
             }
 

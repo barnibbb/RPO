@@ -544,7 +544,8 @@ namespace rpo
         #pragma omp parallel for collapse(2)
         for (int i = 0; i < m_grid_elements.size(); ++i)
         {
-            for (int j = m_parameters.lamp.lower_z; j <= m_parameters.lamp.upper_z; ++j)
+            // for (int j = m_parameters.lamp.lower_z; j <= m_parameters.lamp.upper_z; ++j)
+            for (int j = 0; j < num_steps; ++j)
             {
                 point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
                 position.z() = m_parameters.lamp.center + j * m_parameters.lamp.step_size;
@@ -573,6 +574,88 @@ namespace rpo
         std::cout << "Verification elements: " << m_verification_elements.size() << std::endl;
     }
 
+
+
+    // Z segment based computation
+    void DoseCalculator::computeIrradianceMaps3()
+    {
+        computeGeneralVisibility();
+        create2DModel();
+        computeBreakPoints();
+
+        int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
+        m_irradiance_maps.resize(m_grid_elements.size() * num_steps);
+
+        // Extending ray targets
+        int step_count = m_parameters.lamp.step_size / m_parameters.preprocessing.resolution;
+        int segment_steps = (m_parameters.lamp.upper_z - m_parameters.lamp.lower_z) * step_count; 
+
+        std::vector<double> segments;
+        for (int i = 0; i < m_ray_targets.size(); ++i) segments.push_back(m_ray_targets[i]);
+        for (int i = 0; i < segment_steps; ++i) segments.push_back(m_ray_targets[m_ray_targets.size() - 1] + (i+1) * m_parameters.preprocessing.resolution);
+
+
+        #pragma omp parallel for
+        for (int i = 0; i < m_grid_elements.size(); ++i)
+        {
+            // Compute irradiance maps for all lamp segments
+            std::vector<ExposureMap> segment_maps(segments.size());
+
+            for (int j = 1; j < segments.size() - 1; ++j)
+            {
+                point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+                position.z() = segments[j];
+
+                for (const auto& element : m_base_reachable_elements)
+                {
+                    segment_maps[j][element] = computeIrradianceType6(position, element, i);
+                }
+            }
+
+
+            // Aggregate maps for different z steps
+            for (int j = 0; j < num_steps; ++j)
+            {
+                point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+                position.z() = m_parameters.lamp.center + j * m_parameters.lamp.step_size;
+
+                for (int k = 1; k < m_ray_targets.size() - 1; ++k)
+                {
+                    for (const auto& element : segment_maps[j * step_count + k])
+                    {
+                        if (m_irradiance_maps[i * num_steps + j].find(element.first) == m_irradiance_maps[i * num_steps + j].end())
+                        {
+                            m_irradiance_maps[i * num_steps + j][element.first] = element.second;
+                        }
+                        else
+                        {
+                            m_irradiance_maps[i * num_steps + j][element.first] += element.second;
+                        }
+                    }
+                }                
+
+                OcTreeKey plan_element_key;
+                m_extended_model->coordToKeyChecked(position, m_depth, plan_element_key);
+
+                saveBinaryMap2(plan_element_key, m_irradiance_maps[i * num_steps + j]);
+            } 
+        }
+
+
+
+        for (const auto& map : m_irradiance_maps)      
+        {
+            for (const auto& element : map)
+            {
+                if (element.second > 0)
+                {
+                    m_verification_elements.insert(element.first);
+                }
+            }
+        } 
+
+        std::cout << "Verification elements: " << m_verification_elements.size() << std::endl;
+    }
 
 
 
@@ -1789,6 +1872,56 @@ namespace rpo
 
                         irradiance += coefficient * integral;
                     }
+                }
+            }
+        }
+
+        return irradiance;
+    }
+
+
+
+    double DoseCalculator::computeIrradianceType6(const point3d& lamp_position, const OcTreeKey& key, int index)
+    {
+        double irradiance = 0;
+
+        const point3d point = m_extended_model->keyToCoord(key, m_depth);
+
+        static double base_coverage = (((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height)) * m_parameters.preprocessing.safety_radius;
+
+        NodePtr node = m_extended_model->search(key, m_depth);
+
+        if (node->getType() == 2)
+        {
+            const point3d base_point = point3d(lamp_position.x(), lamp_position.y(), m_ground_level);
+
+            if (std::abs(base_point.x() - point.x()) < base_coverage && std::abs(base_point.y() - point.y()) < base_coverage)
+            {
+                return 0;
+            }
+        }
+
+        const double distance = (point - lamp_position).norm();
+
+        if (!std::isnan(distance) && distance < m_parameters.lamp.range)
+        {
+            const point3d normal = node->getNormal();
+
+            if (!std::isnan(normal.norm()))
+            {
+                const double L = m_resolution;
+
+                const double coefficient = m_parameters.lamp.power / (4 * M_PI * m_parameters.lamp.height);
+
+                point3d center = lamp_position;
+
+                if (compute3DVisibility2(center, point, index)) 
+                {
+                    const point3d difference = point - center;
+
+                    const double integral = computeIrradianceIntegral(difference, normal, L);
+
+                    irradiance += coefficient * integral;
                 }
             }
         }

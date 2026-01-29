@@ -38,6 +38,7 @@ namespace rpo
         // Irradiance maps
         void computeIrradianceMaps();
         void computeIrradianceMaps2();
+        void computeIrradianceMaps3();
         void loadIrradianceMaps();
         void loadIrradianceMaps2();
         void saveIrradianceMap(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
@@ -66,6 +67,7 @@ namespace rpo
         double computeIrradianceType3(const point3d& lamp_position, const OcTreeKey& key) const;
         double computeIrradianceType4(const point3d& lamp_position, const OcTreeKey& key, int index = -1, int z_step = 0);
         double computeIrradianceType5(const point3d& lamp_position, const OcTreeKey& key) const;
+        double computeIrradianceType6(const point3d& lamp_position, const OcTreeKey& key, int index = -1);
         double computeIrradianceIntegral(const point3d& distance, const point3d& normal, double L) const;
         bool compute2DVisibility(const point3d& lamp_position, const point3d& element) const;
         bool compute3DVisibility(const point3d& lamp_position, const point3d& element) const;

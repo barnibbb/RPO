@@ -84,7 +84,7 @@ int main (int argc, char** argv)
     if (!parameters.computation.load_maps)
     {
         auto start_precomputation = std::chrono::high_resolution_clock::now();
-        visualizer.computeIrradianceMaps2();
+        visualizer.computeIrradianceMaps3();
         auto stop_precomputation = std::chrono::high_resolution_clock::now();
         precomp_time = std::chrono::duration_cast<std::chrono::seconds>(stop_precomputation - start_precomputation);
         std::cout << "Precomputation time: " << precomp_time.count() << std::endl;
