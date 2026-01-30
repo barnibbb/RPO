@@ -34,6 +34,7 @@ namespace rpo
         double step_size = 0.2;
         double center;
         double top;
+        double base_coverage;
         int lower_z = 0;
         int upper_z = 5;
     };

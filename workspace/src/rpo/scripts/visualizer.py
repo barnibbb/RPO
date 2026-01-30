@@ -334,7 +334,7 @@ def show_objects(model_file):
 if __name__ == '__main__':
 
     model_file = '/home/appuser/data/models/infirmary_extended.ot'
-    irradiance_dir = '/home/appuser/data/irradiance_infirmary_2'
+    irradiance_dir = '/home/appuser/data/infirmary/infirmary_irradiance_xy'
     solution_file = '/home/appuser/data/infirmary2.sol'
     grid_file = '/home/appuser/data/grid.txt'
     # solution_file = '/home/appuser/data/ceiling.sol'
@@ -342,10 +342,10 @@ if __name__ == '__main__':
     path_file = '/home/appuser/data/path.txt'
     pos_file = '/home/appuser/data/pos.txt'
     
-    # show_irradiance_maps(model_file, irradiance_dir)
+    show_irradiance_maps(model_file, irradiance_dir)
 
     # show_dose(model_file, irradiance_dir, solution_file, grid_file)
 
     # show_objects(model_file)
 
-    show_path(model_file, irradiance_dir, path_file, pos_file)
+    # show_path(model_file, irradiance_dir, path_file, pos_file)

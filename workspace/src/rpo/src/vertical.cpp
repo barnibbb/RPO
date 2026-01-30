@@ -9,15 +9,18 @@ int main (int argc, char** argv)
     auto start_overall = std::chrono::high_resolution_clock::now();
 
     // Read input parameters -------------------------------------------------------
-    if (argc != 2)
+    if (argc < 2)
     {
-        std::cerr << "Usage: rosrun rpo RPO <parameter_file>" << std::endl;
+        std::cerr << "Usage: rosrun rpo Vertical <parameter_file>" << std::endl;
         return -1;
     }
 
     const std::string parameters_file = argv[1];
     rpo::Parameters parameters = rpo::Parameters::loadParameters(parameters_file);
-
+    
+    // Special computing method
+    bool segmentwise = (parameters.computation.type == 14) ? true : false;
+    if (segmentwise) parameters.computation.type = 12;
 
     std::filesystem::create_directory(parameters.paths.irradiance_maps);
 
@@ -61,8 +64,7 @@ int main (int argc, char** argv)
 
 
     // Visualizer initialization ---------------------------------------------------
-    ros::init(argc, argv, "rpo");
-
+    ros::init(argc, argv, "vertical");
     rpo::ROSVisualizer visualizer(extended_model, color_model, parameters);
     
     
@@ -77,14 +79,15 @@ int main (int argc, char** argv)
 
 
     // Cut random elements on lab model
-    if (argc == 3 && argv[2] == "1") visualizer.filter();
+    if (argc == 3) visualizer.filter();
 
 
     // Precomputation
     if (!parameters.computation.load_maps)
     {
         auto start_precomputation = std::chrono::high_resolution_clock::now();
-        visualizer.computeIrradianceMaps3();
+        if (segmentwise) visualizer.computeIrradianceMaps3();
+        else visualizer.computeIrradianceMaps2();
         auto stop_precomputation = std::chrono::high_resolution_clock::now();
         precomp_time = std::chrono::duration_cast<std::chrono::seconds>(stop_precomputation - start_precomputation);
         std::cout << "Precomputation time: " << precomp_time.count() << std::endl;
@@ -227,8 +230,58 @@ int main (int argc, char** argv)
     auto duration_overall = std::chrono::duration_cast<std::chrono::seconds>(stop_overall - start_overall);
 
 
+    // Active indices
+    std::vector<double> active_indices = visualizer.getGridIndices(best_plan);
+
+    std::fstream fi(parameters.paths.active_indices, std::ios::out);
+
+    if (fi.is_open())
+    {
+        for (int i = 0; i < active_indices.size() - 1; ++i) 
+        {
+            fi << active_indices[i] << " ";
+        }
+        fi << active_indices[active_indices.size() - 1] << std::endl;
+
+        fi.close();
+    }
 
 
+    // Final verification ----------------------------------------------------------
+    double optimized_coverage = best_plan.second;
+    double verified_coverage = best_plan.second;
+
+    int final_number_of_positions = best_plan.first.size() / parameters.optimization.element_size;
+
+    if (!parameters.optimization.verify && !parameters.computation.semantic)
+    {
+        rpo::Score score = visualizer.showResult(visualizer.getGrid(best_plan), true);
+
+        verified_coverage = score.general_coverage;
+    }
+
+
+
+    // Final report ----------------------------------------------------------------
+    std::fstream fs(parameters.paths.brief_report, std::ios::out | std::ios::app);
+
+    if (fs.is_open())
+    {
+        fs << parameters.computation.type << " ";
+        fs << optimized_coverage          << " ";
+        fs << verified_coverage           << " ";
+        fs << final_number_of_positions   << " ";
+        fs << precomp_time.count()        << " ";
+        fs << duration_overall.count()    << std::endl;
+        
+        fs.close();
+    }
+
+    std::cout << "Optimized coverage: "        << optimized_coverage        << std::endl;
+    std::cout << "Verified coverage: "         << verified_coverage         << std::endl;
+    std::cout << "Final number of positions: " << final_number_of_positions << std::endl;
+    std::cout << "Precomputation time: "       << precomp_time.count()      << std::endl;
+    std::cout << "Overall duration: "          << duration_overall.count()  << "\n\n\n";
 
     return 0;
 }

@@ -75,6 +75,10 @@ namespace rpo
 
         bool ground_level_set = false;
 
+        m_parameters.lamp.base_coverage = ((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height) * m_parameters.preprocessing.safety_radius;
+
+        std::cout << "Base coverage: " << m_parameters.lamp.base_coverage << "\n";
+
         for (rpo::ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
         {
             NodePtr node = m_extended_model->search(it.getKey(), m_depth);
@@ -1118,7 +1122,7 @@ namespace rpo
         cloud_with_normals->height = 1;
         cloud_with_normals->is_dense = false;
 
-        pcl::io::savePLYFileBinary("/home/appuser/data/ground_with_normals.ply", *cloud_with_normals);
+        // pcl::io::savePLYFileBinary("/home/appuser/data/ground_with_normals.ply", *cloud_with_normals);
     }
 
 
@@ -1216,7 +1220,7 @@ namespace rpo
         cloud_with_normals->height = 1;
         cloud_with_normals->is_dense = false;
 
-        pcl::io::savePLYFileBinary("/home/appuser/data/ground_with_normals2.ply", *cloud_with_normals);
+        // pcl::io::savePLYFileBinary("/home/appuser/data/ground_with_normals2.ply", *cloud_with_normals);
     }
 
 
@@ -1618,22 +1622,34 @@ namespace rpo
 
 
 
-    // 1 - Pierson - 2D model, 2D distance, no angle, point light source
+    // Checked - 1,13 - Pierson, Rodrigo - 2D model, 2D distance, no/2D ray tracing, no angle, point light source
     double DoseCalculator::computeIrradianceType1(const point3d& lamp_position, const OcTreeKey& key) const
     {
         double irradiance = 0;
 
-        const point3d point = m_extended_model->keyToCoord(key, m_depth);
+        const double base_coverage = m_parameters.lamp.base_coverage;
 
+        // 2D point with z = m_ground_level - 1
+        const point3d point_2d = m_extended_model->keyToCoord(key, m_depth);
         const point3d lamp_position_2d(lamp_position.x(), lamp_position.y(), m_ground_level - 1);
+        const point3d difference_2d = point_2d - lamp_position_2d;
 
-        const double distance = (point - lamp_position_2d).norm();
+        const double distance_2d = difference_2d.norm();
 
-        if (!std::isnan(distance) && distance < m_parameters.lamp.range && distance > m_parameters.preprocessing.safety_radius)
+
+        // Exclude base coverage
+        if (std::abs(difference_2d.x()) < base_coverage && std::abs(difference_2d.y()) < base_coverage)
         {
-            if(m_parameters.computation.type == 13 || compute2DVisibility(lamp_position_2d, point))
+            return 0;
+        }
+
+
+        if (!std::isnan(distance_2d) && distance_2d < m_parameters.lamp.range)
+        {
+            // Type 13 - no ray tracing applied
+            if(m_parameters.computation.type == 13 || compute2DVisibility(lamp_position_2d, point_2d))
             {
-                irradiance = m_parameters.lamp.power / (4 * M_PI * std::pow(distance, 2));
+                irradiance = m_parameters.lamp.power / (4 * M_PI * std::pow(distance_2d, 2));
             }
         }
 
@@ -1642,23 +1658,42 @@ namespace rpo
 
 
 
-    // 2 - Conroy - 2D model, d = d_2D + h/2, 2D angle (lenghtened ray), point light source 
+    // Checked - 2 - Conroy - 2D model, 3D: d = d_2D + h/2, 2D ray tracing, 3D angle, point light source 
     double DoseCalculator::computeIrradianceType2(const point3d& lamp_position, const OcTreeKey& key) const
     {
+        // Conroy
+        // if room.full_room_iswall[room_idx]:
+        //     angle = np.pi/2 if distance_2d == 0 else np.arctan(robot_height/distance_2d)
+        // else:
+        //     angle = 0 if distance_2d == 0 else np.pi/2 - np.arctan(robot_height/distance_2d)
+        // room_intensities[guard_idx, room_idx] = robot_power * np.cos(angle) * 1/(4 * np.pi * (distance_2d**2 + robot_height**2))
+
         double irradiance = 0;
 
-        const point3d point = m_extended_model->keyToCoord(key, m_depth);
+        const double base_coverage = m_parameters.lamp.base_coverage;
 
+        // 2D point with z = m_ground_level - 1
+        const point3d point_2d = m_extended_model->keyToCoord(key, m_depth);
+        const point3d point_3d(point_2d.x(), point_2d.y(), m_ground_level);
         const point3d lamp_position_2d(lamp_position.x(), lamp_position.y(), m_ground_level - 1);
-
-        const double d2 = (point - lamp_position_2d).norm();
+        const point3d lamp_position_3d(lamp_position.x(), lamp_position.y(), m_ground_level + m_parameters.lamp.offset + m_parameters.lamp.height / 2);
+        const point3d difference_2d = point_2d - lamp_position_2d;
+        const point3d difference_3d = point_3d - lamp_position_3d;
 
         // Modification: instead of h/2 we use lamp_offset + lamp_height / 2
-        const double distance = std::sqrt(std::pow(d2, 2) + 
-            std::pow(m_parameters.lamp.offset + m_parameters.lamp.height / 2, 2));
+        const double distance_3d = difference_3d.norm();
 
-        if (!std::isnan(distance) && distance < m_parameters.lamp.range && d2 > m_parameters.preprocessing.safety_radius)
+        // Exclude base coverage
+        if (std::abs(difference_3d.x()) < base_coverage && std::abs(difference_3d.y()) < base_coverage)
         {
+            return 0;
+        }
+
+
+        // Consider region between base coverage and max range
+        if (!std::isnan(distance_3d) && distance_3d < m_parameters.lamp.range)
+        {
+            // Find point in 2D map
             NodePtr node = m_extended_model->search(key, m_depth);
 
             if (node != nullptr) // 2D element with known normal vector
@@ -1667,25 +1702,23 @@ namespace rpo
                 
                 if (!std::isnan(normal_2d.norm()))
                 {
-                    if(compute2DVisibility(lamp_position_2d, point))
+                    if(compute2DVisibility(lamp_position_2d, point_2d))
                     {
-                        const point3d difference_2d = point - lamp_position_2d;
-
-                        irradiance = m_parameters.lamp.power * std::abs(std::cos(normal_2d.angleTo(difference_2d))) / (4 * M_PI * std::pow(distance, 2));
+                        // Considering 3D angle
+                        irradiance = m_parameters.lamp.power * std::abs(std::cos(normal_2d.angleTo(difference_3d))) / (4 * M_PI * std::pow(distance_3d, 2));
                     }
                 }   
             }
             else // 2D element where the ray needs to be lengthened
             {
-                if(compute2DVisibility(lamp_position_2d, point))
+                if(compute2DVisibility(lamp_position_2d, point_2d))
                 {
-                    const point3d difference_2d = point - lamp_position_2d;
+                    point3d end_point_2d;
 
-                    point3d end_point;
-
-                    if (m_extended_model->castRay(point, difference_2d, lamp_position_2d, end_point, true, 1.1 * std::abs(difference_2d.norm()), m_depth, m_resolution))
+                    if (m_extended_model->castRay(point_2d, difference_2d, lamp_position_2d, end_point_2d, true, 1.1 * std::abs(difference_2d.norm()), m_depth, m_resolution))
                     {
-                        NodePtr end_node = m_extended_model->search(end_point, m_depth);
+                        // Find end node in 2D map
+                        NodePtr end_node = m_extended_model->search(end_point_2d, m_depth);
 
                         if (end_node != nullptr)
                         {
@@ -1693,9 +1726,8 @@ namespace rpo
 
                             if (!std::isnan(normal_2d.norm()))
                             {
-                                const point3d difference_end = end_point - lamp_position_2d;
-
-                                irradiance = m_parameters.lamp.power * std::abs(std::cos(normal_2d.angleTo(difference_end))) / (4 * M_PI * std::pow(distance, 2));
+                                // Obtain the normal from further element but the difference vector remains the same 
+                                irradiance = m_parameters.lamp.power * std::abs(std::cos(normal_2d.angleTo(difference_3d))) / (4 * M_PI * std::pow(distance_3d, 2));
                             }
                         }
                     }    
@@ -1708,49 +1740,49 @@ namespace rpo
 
 
 
-    // 3 - Tiseni (point), Kurniawan - 3D model, 3D distance, 3D or no angle, point light source
+    // Checked - 3,5,6 - Tiseni (point), Kurniawan - 3D model, 3D distance, 3D ray tracing, 3D or no angle, point light source
     double DoseCalculator::computeIrradianceType3(const point3d& lamp_position, const OcTreeKey& key) const
     {
         double irradiance = 0;
 
-        const point3d point = m_extended_model->keyToCoord(key, m_depth);
+        const double base_coverage = m_parameters.lamp.base_coverage;
 
-        static double base_coverage = (((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height)) * m_parameters.preprocessing.safety_radius;
-
+        const point3d point_3d = m_extended_model->keyToCoord(key, m_depth);
+        const point3d lamp_position_3d = lamp_position;
+        const point3d difference_3d = point_3d - lamp_position_3d;
         NodePtr node = m_extended_model->search(key, m_depth);
 
+        const double distance_3d = difference_3d.norm();
+
+        // Only exclude ground elements based on base coverage
         if (node->getType() == 2)
         {
-            const point3d base_point = point3d(lamp_position.x(), lamp_position.y(), m_ground_level);
-
-            if (std::abs(base_point.x() - point.x()) < base_coverage && std::abs(base_point.y() - point.y()) < base_coverage)
+            if (std::abs(difference_3d.x()) < base_coverage && std::abs(difference_3d.y()) < base_coverage)
             {
                 return 0;
             }
         }
 
-        const double distance = (point - lamp_position).norm();
 
-        if (!std::isnan(distance) && distance < m_parameters.lamp.range)
+        if (!std::isnan(distance_3d) && distance_3d < m_parameters.lamp.range)
         {
+            // No angle of incidence considered
             if (m_parameters.computation.type == 5)
             {
-                if (compute3DVisibility(lamp_position, point))
+                if (compute3DVisibility(lamp_position_3d, point_3d))
                 {
-                    irradiance = m_parameters.lamp.power / (4 * M_PI * std::pow(distance, 2));
+                    irradiance = m_parameters.lamp.power / (4 * M_PI * std::pow(distance_3d, 2));
                 }
             }
             else
             {
-                const point3d normal = node->getNormal();
+                const point3d normal_3d = node->getNormal();
 
-                if (!std::isnan(normal.norm()))
+                if (!std::isnan(normal_3d.norm()))
                 {
-                    if (compute3DVisibility(lamp_position, point))
+                    if (compute3DVisibility(lamp_position_3d, point_3d))
                     {
-                        const point3d difference = point - lamp_position;
-
-                        irradiance = m_parameters.lamp.power * std::abs(std::cos(normal.angleTo(difference))) / (4 * M_PI * std::pow(distance, 2));     
+                        irradiance = m_parameters.lamp.power * std::abs(std::cos(normal_3d.angleTo(difference_3d))) / (4 * M_PI * std::pow(distance_3d, 2));     
                     }
                 }
             }
@@ -1761,52 +1793,53 @@ namespace rpo
 
 
 
-    // 4 - Tiseni (cylindrical), Mine - 3D model, 3D distance, 3D angle, cylindrical light source
+    // Checked - 4,7,8,9,10,12 - Tiseni (cylindrical), Mine - 3D model, 3D distance, 3D raytracing, 3D angle, cylindrical light source
     double DoseCalculator::computeIrradianceType4(const point3d& lamp_position, const OcTreeKey& key, int index, int z_step)
     {
         double irradiance = 0;
 
-        const point3d point = m_extended_model->keyToCoord(key, m_depth);
+        const double base_coverage = m_parameters.lamp.base_coverage;
 
-        static double base_coverage = (((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height)) * m_parameters.preprocessing.safety_radius;
-
+        const point3d point_3d = m_extended_model->keyToCoord(key, m_depth);
+        const point3d lamp_position_3d = lamp_position;
+        point3d difference_3d = point_3d - lamp_position_3d;
         NodePtr node = m_extended_model->search(key, m_depth);
 
+        const double distance_3d = difference_3d.norm();
+
+        // Only exclude ground elements based on base coverage
         if (node->getType() == 2)
         {
-            const point3d base_point = point3d(lamp_position.x(), lamp_position.y(), m_ground_level);
-
-            if (std::abs(base_point.x() - point.x()) < base_coverage && std::abs(base_point.y() - point.y()) < base_coverage)
+            if (std::abs(difference_3d.x()) < base_coverage && std::abs(difference_3d.y()) < base_coverage)
             {
                 return 0;
             }
         }
 
-        const double distance = (point - lamp_position).norm();
 
-        if (!std::isnan(distance) && distance < m_parameters.lamp.range)
+        // Hybrid ray tracing only applied for type 8 and 12
+        bool hybrid = (m_parameters.computation.type == 8 || m_parameters.computation.type == 12) ? true : false;
+        
+
+        if (!std::isnan(distance_3d) && distance_3d < m_parameters.lamp.range)
         {
-            const point3d normal = node->getNormal();
+            const point3d normal_3d = node->getNormal();
 
-            if (!std::isnan(normal.norm()))
+            if (!std::isnan(normal_3d.norm()))
             {
-                const double L = m_resolution;
-
                 const double coefficient = m_parameters.lamp.power / (4 * M_PI * m_parameters.lamp.height);
 
-                point3d center = lamp_position;
+                point3d center_3d = lamp_position_3d;
 
                 for (int i = 1; i < m_ray_targets.size() - 1; ++i)
                 {
-                    center.z() = m_ray_targets[i] + z_step * m_parameters.lamp.step_size;
+                    center_3d.z() = m_ray_targets[i] + z_step * m_parameters.lamp.step_size;
 
-                    bool hybrid = (m_parameters.computation.type == 8 || m_parameters.computation.type == 12) ? true : false;
-
-                    if ((!hybrid && compute3DVisibility(center, point)) || (hybrid && compute3DVisibility2(center, point, index))) 
+                    if ((!hybrid && compute3DVisibility(center_3d, point_3d)) || (hybrid && compute3DVisibility2(center_3d, point_3d, index))) 
                     {
-                        const point3d difference = point - center;
+                        difference_3d = point_3d - center_3d;
 
-                        const double integral = computeIrradianceIntegral(difference, normal, L);
+                        const double integral = computeIrradianceIntegral(difference_3d, normal_3d, m_resolution);
 
                         irradiance += coefficient * integral;
                     }
@@ -1818,57 +1851,52 @@ namespace rpo
     }
 
 
-
+    // Checked - 11 - Mantelli - 2D model, 3D distance, 2D ray tracing, 3D angle, cylindrical light source
     double DoseCalculator::computeIrradianceType5(const point3d& lamp_position, const OcTreeKey& key) const
     {
         double irradiance = 0;
 
-        const point3d point = m_extended_model->keyToCoord(key, m_depth);
+        const double base_coverage = m_parameters.lamp.base_coverage;
+
+        // 2D point with z = m_ground_level - 1
+        const point3d point_2d = m_extended_model->keyToCoord(key, m_depth);
+        const point3d point_3d(point_2d.x(), point_2d.y(), m_ground_level + m_resolution);
         const point3d lamp_position_2d(lamp_position.x(), lamp_position.y(), m_ground_level - 1);
+        const point3d lamp_position_3d = lamp_position;
+        point3d difference_3d = point_3d - lamp_position_3d;
 
-        if (std::abs(lamp_position_2d.x() - point.x()) < 0.1 || std::abs(lamp_position_2d.y() - point.y()) < 0.1) return irradiance;
+        const double distance_3d = difference_3d.norm();
 
 
-
-        // static double base_coverage = (((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height)) * m_parameters.preprocessing.safety_radius;
-
-        NodePtr node = m_extended_model->search(key, m_depth);
-
-        // if (node->getType() == 2)
-        // {
-        //     const point3d base_point = point3d(lamp_position.x(), lamp_position.y(), m_ground_level);
-
-        //     if (std::abs(base_point.x() - point.x()) < base_coverage && std::abs(base_point.y() - point.y()) < base_coverage)
-        //     {
-        //         return 0;
-        //     }
-        // }
-
-        const double distance = (point - lamp_position).norm();
-
-        if (!std::isnan(distance) && distance < m_parameters.lamp.range)
+        // Exclude base coverage
+        if (std::abs(difference_3d.x()) < base_coverage && std::abs(difference_3d.y()) < base_coverage)
         {
-            const point3d normal = (node != nullptr) ? node->getNormal() : point3d(0, 0, 1);
+            return 0;
+        }
 
-            if (!std::isnan(normal.norm()))
+        
+
+        if (!std::isnan(distance_3d) && distance_3d < m_parameters.lamp.range)
+        {
+            NodePtr node = m_extended_model->search(key, m_depth);
+
+            const point3d normal_2d = (node != nullptr) ? node->getNormal() : point3d(0, 0, 1);
+
+            if (!std::isnan(normal_2d.norm()))
             {
-                const double L = m_resolution;
-
                 const double coefficient = m_parameters.lamp.power / (4 * M_PI * m_parameters.lamp.height);
 
-                point3d center = lamp_position;
+                point3d center_3d = lamp_position_3d;
 
-                if (compute2DVisibility(lamp_position_2d, point))
+                if (compute2DVisibility(lamp_position_2d, point_2d))
                 {
                     for (int i = 1; i < m_ray_targets.size() - 1; ++i)
                     {
-                        center.z() = m_ray_targets[i];
+                        center_3d.z() = m_ray_targets[i];
 
-                        const point3d floor_point = point3d(point.x(), point.y(), m_ground_level + m_resolution);
+                        difference_3d = point_3d - center_3d;
 
-                        const point3d difference = floor_point - center;
-
-                        const double integral = computeIrradianceIntegral(difference, normal, L);
+                        const double integral = computeIrradianceIntegral(difference_3d, normal_2d, m_resolution);
 
                         irradiance += coefficient * integral;
                     }
@@ -1881,45 +1909,43 @@ namespace rpo
 
 
 
+    // Checked - Special type
     double DoseCalculator::computeIrradianceType6(const point3d& lamp_position, const OcTreeKey& key, int index)
     {
         double irradiance = 0;
 
-        const point3d point = m_extended_model->keyToCoord(key, m_depth);
+        const double base_coverage = m_parameters.lamp.base_coverage;
 
-        static double base_coverage = (((m_parameters.lamp.height + m_parameters.lamp.offset) / m_parameters.lamp.height)) * m_parameters.preprocessing.safety_radius;
-
+        const point3d point_3d = m_extended_model->keyToCoord(key, m_depth);
+        const point3d lamp_position_3d = lamp_position;
+        const point3d difference_3d = point_3d - lamp_position_3d;
         NodePtr node = m_extended_model->search(key, m_depth);
+        
+        const double distance_3d = difference_3d.norm();
 
+
+        // Only exclude ground elements based on base coverage
         if (node->getType() == 2)
         {
-            const point3d base_point = point3d(lamp_position.x(), lamp_position.y(), m_ground_level);
-
-            if (std::abs(base_point.x() - point.x()) < base_coverage && std::abs(base_point.y() - point.y()) < base_coverage)
+            if (std::abs(difference_3d.x()) < base_coverage && std::abs(difference_3d.y()) < base_coverage)
             {
                 return 0;
             }
         }
 
-        const double distance = (point - lamp_position).norm();
 
-        if (!std::isnan(distance) && distance < m_parameters.lamp.range)
+
+        if (!std::isnan(distance_3d) && distance_3d < m_parameters.lamp.range)
         {
-            const point3d normal = node->getNormal();
+            const point3d normal_3d = node->getNormal();
 
-            if (!std::isnan(normal.norm()))
+            if (!std::isnan(normal_3d.norm()))
             {
-                const double L = m_resolution;
-
                 const double coefficient = m_parameters.lamp.power / (4 * M_PI * m_parameters.lamp.height);
 
-                point3d center = lamp_position;
-
-                if (compute3DVisibility2(center, point, index)) 
+                if (compute3DVisibility2(lamp_position_3d, point_3d, index)) 
                 {
-                    const point3d difference = point - center;
-
-                    const double integral = computeIrradianceIntegral(difference, normal, L);
+                    const double integral = computeIrradianceIntegral(difference_3d, normal_3d, m_resolution);
 
                     irradiance += coefficient * integral;
                 }

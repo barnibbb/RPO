@@ -16,7 +16,6 @@ int main (int argc, char** argv)
     }
 
     const std::string parameters_file = argv[1];
-
     rpo::Parameters parameters = rpo::Parameters::loadParameters(parameters_file);
 
 
@@ -32,9 +31,7 @@ int main (int argc, char** argv)
     if (file.is_open())
     {
         color_model.reset(dynamic_cast<ColorOcTree*>(AbstractOcTree::read(file)));
-
         std::cout << "Color octree num leaf nodes: " << color_model->getNumLeafNodes() << std::endl;
-
         file.close();
     }
     else
@@ -48,9 +45,7 @@ int main (int argc, char** argv)
     if (file.is_open())
     {
         extended_model.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file)));
-
         std::cout << "Extended octree num leaf nodes: " << extended_model->getNumLeafNodes() << std::endl;
-
         file.close();
     }        
     else
@@ -67,7 +62,6 @@ int main (int argc, char** argv)
 
     // Visualizer initialization ---------------------------------------------------
     ros::init(argc, argv, "rpo");
-
     rpo::ROSVisualizer visualizer(extended_model, color_model, parameters);
     
     
@@ -89,13 +83,9 @@ int main (int argc, char** argv)
     if ((parameters.computation.type == 7 || parameters.computation.type == 8) && !parameters.computation.load_maps)
     {
         auto start_precomputation = std::chrono::high_resolution_clock::now();
-
         visualizer.computeIrradianceMaps();
-        
         auto stop_precomputation = std::chrono::high_resolution_clock::now();
-    
         precomp_time = std::chrono::duration_cast<std::chrono::seconds>(stop_precomputation - start_precomputation);
-
         std::cout << "Precomputation time: " << precomp_time.count() << std::endl;
     }
     else
@@ -119,8 +109,6 @@ int main (int argc, char** argv)
     visualizer.showElementTypes();
     
     std::cout << "Elements shown!" << std::endl;
-
-    
 
 
     // Iterative optimization ------------------------------------------------------

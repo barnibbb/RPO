@@ -394,7 +394,7 @@ namespace rpo
     }
 
 
-
+    // TODO for later: showResult is not yet adjusted for vertical shift
     Score ROSVisualizer::showResult(const RadiationPlan& radiation_plan, bool verify)
     {
         int computation_type = m_parameters.computation.type;
@@ -485,7 +485,7 @@ namespace rpo
 
         for (int i = 0; i < elements.size(); i += element_size)
         {
-            placeLamp2(elements[i], elements[i + 1]);
+            placeLamp(elements[i], elements[i + 1]);
         }
 
 
