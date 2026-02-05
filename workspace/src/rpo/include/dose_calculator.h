@@ -78,6 +78,8 @@ namespace rpo
         KeySet getBaseReachableElements() const;
 
         void computeBreakPoints();
+        void computeBreakPoint(const int i);
+        void deleteBreakPoint(const int i);
 
         inline double getOrigin(const double base, const double direction) const;
 

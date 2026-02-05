@@ -684,6 +684,7 @@ namespace rpo
         int n = m_active_indices.size();
         m_graph.assign(n, std::vector<Path>(n));
 
+        # pragma omp parallel for
         for (int i = 0; i < n; ++i)
         {
             for (int j = 0; j < n; ++j)
@@ -722,7 +723,7 @@ namespace rpo
 
 
 
-    void ROSVisualizer::readOrder(const std::string& order_file)
+    void ROSVisualizer::readOrder(const std::string& order_file, bool closed)
     {
         std::cout << "Read order...\n";
 
@@ -748,7 +749,7 @@ namespace rpo
             }
 
             // Close loop
-            // m_optimal_order.push_back(std::stoi(data[2]));
+            if (closed) m_optimal_order.push_back(std::stoi(data[2]));
         }
 
         in_file.close();

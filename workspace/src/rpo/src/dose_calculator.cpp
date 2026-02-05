@@ -457,7 +457,14 @@ namespace rpo
                 }
             }
 
-            computeBreakPoints();
+            m_break_points_x.resize(m_grid_elements.size());
+            m_break_points_y.resize(m_grid_elements.size());
+            m_break_points_z.resize(m_grid_elements.size());
+            m_break_points_xn.resize(m_grid_elements.size());
+            m_break_points_yn.resize(m_grid_elements.size());
+            m_break_points_zn.resize(m_grid_elements.size());
+
+            // computeBreakPoints();
         }
 
         if (m_parameters.computation.store_maps)
@@ -468,6 +475,11 @@ namespace rpo
         #pragma omp parallel for
         for (int i = 0; i < m_grid_elements.size(); ++i)
         {
+            if (m_parameters.computation.type == 8 || m_parameters.computation.type == 12)
+            {
+                computeBreakPoint(i);
+            }
+
             point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
 
             position.z() = m_parameters.lamp.center;
@@ -498,6 +510,11 @@ namespace rpo
                 {
                     saveBinaryMap(plan_element_key, irradiance_map);
                 }
+            }
+
+            if (m_parameters.computation.type == 8 || m_parameters.computation.type == 12)
+            {
+                deleteBreakPoint(i);
             }
         }
 
@@ -539,15 +556,24 @@ namespace rpo
     {
         computeGeneralVisibility();
         create2DModel();
-        computeBreakPoints();
+        // computeBreakPoints();
+
+        m_break_points_x.resize(m_grid_elements.size());
+        m_break_points_y.resize(m_grid_elements.size());
+        m_break_points_z.resize(m_grid_elements.size());
+        m_break_points_xn.resize(m_grid_elements.size());
+        m_break_points_yn.resize(m_grid_elements.size());
+        m_break_points_zn.resize(m_grid_elements.size());
 
         int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
         m_irradiance_maps.resize(m_grid_elements.size() * num_steps);
 
 
-        #pragma omp parallel for collapse(2)
+        #pragma omp parallel for
         for (int i = 0; i < m_grid_elements.size(); ++i)
         {
+            computeBreakPoint(i);
+
             // for (int j = m_parameters.lamp.lower_z; j <= m_parameters.lamp.upper_z; ++j)
             for (int j = 0; j < num_steps; ++j)
             {
@@ -561,6 +587,8 @@ namespace rpo
 
                 saveBinaryMap2(plan_element_key, m_irradiance_maps[i * num_steps + j]);
             }
+
+            deleteBreakPoint(i);
         }
 
 
@@ -585,7 +613,14 @@ namespace rpo
     {
         computeGeneralVisibility();
         create2DModel();
-        computeBreakPoints();
+        // computeBreakPoints();
+
+        m_break_points_x.resize(m_grid_elements.size());
+        m_break_points_y.resize(m_grid_elements.size());
+        m_break_points_z.resize(m_grid_elements.size());
+        m_break_points_xn.resize(m_grid_elements.size());
+        m_break_points_yn.resize(m_grid_elements.size());
+        m_break_points_zn.resize(m_grid_elements.size());
 
         int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
         m_irradiance_maps.resize(m_grid_elements.size() * num_steps);
@@ -602,6 +637,8 @@ namespace rpo
         #pragma omp parallel for
         for (int i = 0; i < m_grid_elements.size(); ++i)
         {
+            computeBreakPoint(i);
+
             // Compute irradiance maps for all lamp segments
             std::vector<ExposureMap> segment_maps(segments.size());
 
@@ -642,7 +679,9 @@ namespace rpo
                 m_extended_model->coordToKeyChecked(position, m_depth, plan_element_key);
 
                 saveBinaryMap2(plan_element_key, m_irradiance_maps[i * num_steps + j]);
-            } 
+            }
+
+            deleteBreakPoint(i);
         }
 
 
@@ -2210,68 +2249,89 @@ namespace rpo
         #pragma omp parallel for
         for (int i = 0; i < m_grid_elements.size(); ++i)
         {
-            point3d p_lamp_2d = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
-
-            p_lamp_2d.z() = m_ground_level - 1;
-
-            
-
-            for (const auto& r_element : m_base_reachable_elements)
-            {
-                point3d p_element_2d = m_extended_model->keyToCoord(r_element, m_depth);
-
-                p_element_2d.z() = m_ground_level - 1;
-
-                OcTreeKey k_element_2d = m_extended_model->coordToKey(p_element_2d, m_depth);
-
-                if (m_break_points_x[i].find(k_element_2d) == m_break_points_x[i].end())
-                {
-                    const point3d direction_2d = p_lamp_2d - p_element_2d;
-
-                    const double distance_2d = 1.1 * direction_2d.norm();
-
-                    // Check x direction shift
-                    point3d p_element_2d_x = point3d(getOrigin(p_element_2d.x(), direction_2d.x()), p_element_2d.y(), p_element_2d.z());
-
-                    point3d direction_2d_x = p_lamp_2d - p_element_2d_x;
-
-                    if (direction_2d_x.norm() > 0.001)
-                    {
-                        point3d p_end_x;
-
-                        m_extended_model->castRay2(p_element_2d_x, direction_2d_x, p_lamp_2d, p_end_x, true, 
-                            distance_2d, m_depth, m_resolution, m_break_points_x[i][k_element_2d], m_break_points_xn[i][k_element_2d], false);
-                    }
-
-                    // Check y direction shift
-                    point3d p_element_2d_y = point3d(p_element_2d.x(), getOrigin(p_element_2d.y(), direction_2d.y()), p_element_2d.z());
-
-                    point3d direction_2d_y = p_lamp_2d - p_element_2d_y;
-
-                    if (direction_2d_y.norm() > 0.001)
-                    {
-                        point3d p_end_y;
-
-                        m_extended_model->castRay2(p_element_2d_y, direction_2d_y, p_lamp_2d, p_end_y, true,
-                            distance_2d, m_depth, m_resolution, m_break_points_y[i][k_element_2d], m_break_points_yn[i][k_element_2d], false);
-                    }
-                    
-                    // No shift for z direction
-                    point3d p_element_2d_z = p_element_2d;
-
-                    point3d direction_2d_z = p_lamp_2d - p_element_2d_z;
-
-                    point3d p_end_z;
-
-                    m_extended_model->castRay2(p_element_2d_z, direction_2d_z, p_lamp_2d, p_end_z, true,
-                        distance_2d, m_depth, m_resolution, m_break_points_z[i][k_element_2d], m_break_points_zn[i][k_element_2d], false);
-                }
-            }
+            computeBreakPoint(i);
         }
 
 
         std::cout << "Break points: " << m_break_points_x.size() << " " << m_break_points_y.size() << " " << m_break_points_z.size() << "\n";
     }
+
+
+
+    void DoseCalculator::computeBreakPoint(const int i)
+    {
+        point3d p_lamp_2d = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+
+        p_lamp_2d.z() = m_ground_level - 1;        
+
+        for (const auto& r_element : m_base_reachable_elements)
+        {
+            point3d p_element_2d = m_extended_model->keyToCoord(r_element, m_depth);
+
+            p_element_2d.z() = m_ground_level - 1;
+
+            OcTreeKey k_element_2d = m_extended_model->coordToKey(p_element_2d, m_depth);
+
+            if (m_break_points_x[i].find(k_element_2d) == m_break_points_x[i].end())
+            {
+                const point3d direction_2d = p_lamp_2d - p_element_2d;
+
+                const double distance_2d = 1.1 * direction_2d.norm();
+
+                // Check x direction shift
+                point3d p_element_2d_x = point3d(getOrigin(p_element_2d.x(), direction_2d.x()), p_element_2d.y(), p_element_2d.z());
+
+                point3d direction_2d_x = p_lamp_2d - p_element_2d_x;
+
+                if (direction_2d_x.norm() > 0.001)
+                {
+                    point3d p_end_x;
+
+                    m_extended_model->castRay2(p_element_2d_x, direction_2d_x, p_lamp_2d, p_end_x, true, 
+                        distance_2d, m_depth, m_resolution, m_break_points_x[i][k_element_2d], m_break_points_xn[i][k_element_2d], false);
+                }
+
+                // Check y direction shift
+                point3d p_element_2d_y = point3d(p_element_2d.x(), getOrigin(p_element_2d.y(), direction_2d.y()), p_element_2d.z());
+
+                point3d direction_2d_y = p_lamp_2d - p_element_2d_y;
+
+                if (direction_2d_y.norm() > 0.001)
+                {
+                    point3d p_end_y;
+
+                    m_extended_model->castRay2(p_element_2d_y, direction_2d_y, p_lamp_2d, p_end_y, true,
+                        distance_2d, m_depth, m_resolution, m_break_points_y[i][k_element_2d], m_break_points_yn[i][k_element_2d], false);
+                }
+                
+                // No shift for z direction
+                point3d p_element_2d_z = p_element_2d;
+
+                point3d direction_2d_z = p_lamp_2d - p_element_2d_z;
+
+                point3d p_end_z;
+
+                m_extended_model->castRay2(p_element_2d_z, direction_2d_z, p_lamp_2d, p_end_z, true,
+                    distance_2d, m_depth, m_resolution, m_break_points_z[i][k_element_2d], m_break_points_zn[i][k_element_2d], false);
+            }
+        }
+    }
+
+
+
+    void DoseCalculator::deleteBreakPoint(const int i)
+    {
+        m_break_points_x[i].clear();
+        m_break_points_y[i].clear();
+        m_break_points_z[i].clear();
+        m_break_points_xn[i].clear();
+        m_break_points_yn[i].clear();
+        m_break_points_zn[i].clear();
+    }
+
+
+
+
 
     inline double DoseCalculator::getOrigin(const double base, const double direction) const
     {

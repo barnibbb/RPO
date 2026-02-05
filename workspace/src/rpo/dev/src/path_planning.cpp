@@ -6,7 +6,22 @@
 
 int main (int argc, char** argv)
 {
-    const std::string parameters_file = "/home/appuser/data/params.yaml";
+    if (argc < 4) return -1;
+
+    const std::string scene = argv[1];
+    const std::string type = argv[2];
+    const std::string closed = argv[3];
+
+    bool cls = closed == "closed" ? true : false;
+
+    const std::string work_folder = "/home/appuser/data/" + scene + "/" + scene + "_" + type;
+    const std::string sol_file    = work_folder + "_indices.txt";
+    const std::string tsp_file    = work_folder + ".tsp";
+    const std::string order_file  = work_folder + ".order";
+    const std::string path_file   = work_folder + ".path";
+    const std::string pos_file    = work_folder + ".pos";
+
+    const std::string parameters_file = "/home/appuser/data/" + scene + "/params_" + scene + "_xy.yaml";
 
     rpo::Parameters parameters = rpo::Parameters::loadParameters(parameters_file);
 
@@ -56,24 +71,21 @@ int main (int argc, char** argv)
     
 
     // Load active indices
-    const std::string sol_file = "/home/appuser/data/infirmary2.sol";
-    const std::string report_file = "/home/appuser/data/active_indices.txt";
-    const std::string tsp_file = "/home/appuser/data/infirmary.tsp";
-    const std::string order_file = "/home/appuser/data/infirmary.order";
-    const std::string path_file = "/home/appuser/data/path.txt";
-    const std::string pos_file = "/home/appuser/data/pos.txt";
-
-    // visualizer.loadActiveIndices(sol_file);
-
-    //visualizer.loadActiveIndices1(report_file);
-
-    visualizer.loadActiveIndices2();
+    if (type == "active") visualizer.loadActiveIndices(sol_file);
+    else visualizer.loadActiveIndices2();
 
     visualizer.computeGraph();
 
     visualizer.exportGraph(tsp_file);
 
-    visualizer.readOrder(order_file);
+    std::string command = "python3 /home/appuser/workspace/src/rpo/scripts/run_concorde.py ";
+    command += tsp_file;
+    command += " ";
+    command += order_file;
+
+    system(command.c_str());
+
+    visualizer.readOrder(order_file, cls);
 
     visualizer.buildPath(path_file, pos_file);
 

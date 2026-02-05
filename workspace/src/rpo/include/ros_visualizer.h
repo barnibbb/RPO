@@ -64,7 +64,7 @@ namespace rpo
         Path computePath(const std::pair<int, int>& start, const std::pair<int,int>& goal);
         void computeGraph();
         void exportGraph(const std::string& tsp_file);
-        void readOrder(const std::string& order_file);
+        void readOrder(const std::string& order_file, bool closed);
         void buildPath(const std::string& path_file, const std::string& pos_file);
 
 

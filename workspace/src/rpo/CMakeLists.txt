@@ -224,6 +224,7 @@ add_executable(PathPlanning
 target_link_libraries(PathPlanning
   ${catkin_LIBRARIES}
   yaml-cpp
+  OpenMP::OpenMP_CXX
 )
 
 

@@ -14,7 +14,7 @@ int main (int argc, char** argv)
 
     for (const auto& param_file : param_files)
     {
-        for (int i = 0; i < 2; ++i)
+        for (int i = 0; i < 10; ++i)
         {
             const std::string command = executable + param_file; 
 
