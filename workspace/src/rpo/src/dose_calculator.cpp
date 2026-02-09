@@ -623,7 +623,7 @@ namespace rpo
         m_break_points_zn.resize(m_grid_elements.size());
 
         int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
-        m_irradiance_maps.resize(m_grid_elements.size() * num_steps);
+        if (m_parameters.computation.store_maps) m_irradiance_maps.resize(m_grid_elements.size() * num_steps);
 
         // Extending ray targets
         int step_count = m_parameters.lamp.step_size / m_parameters.preprocessing.resolution;
@@ -657,20 +657,39 @@ namespace rpo
             // Aggregate maps for different z steps
             for (int j = 0; j < num_steps; ++j)
             {
+                ExposureMap irradiance_map;
+
                 point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
                 position.z() = m_parameters.lamp.center + j * m_parameters.lamp.step_size;
 
                 for (int k = 1; k < m_ray_targets.size() - 1; ++k)
                 {
-                    for (const auto& element : segment_maps[j * step_count + k])
+                    if (m_parameters.computation.store_maps)
                     {
-                        if (m_irradiance_maps[i * num_steps + j].find(element.first) == m_irradiance_maps[i * num_steps + j].end())
+                        for (const auto& element : segment_maps[j * step_count + k])
                         {
-                            m_irradiance_maps[i * num_steps + j][element.first] = element.second;
+                            if (m_irradiance_maps[i * num_steps + j].find(element.first) == m_irradiance_maps[i * num_steps + j].end())
+                            {
+                                m_irradiance_maps[i * num_steps + j][element.first] = element.second;
+                            }
+                            else
+                            {
+                                m_irradiance_maps[i * num_steps + j][element.first] += element.second;
+                            }
                         }
-                        else
+                    }
+                    else
+                    {
+                        for (const auto& element : segment_maps[j * step_count + k])
                         {
-                            m_irradiance_maps[i * num_steps + j][element.first] += element.second;
+                            if (irradiance_map.find(element.first) == irradiance_map.end())
+                            {
+                                irradiance_map[element.first] = element.second;
+                            }
+                            else
+                            {
+                                irradiance_map[element.first] += element.second;
+                            }
                         }
                     }
                 }                
@@ -678,27 +697,152 @@ namespace rpo
                 OcTreeKey plan_element_key;
                 m_extended_model->coordToKeyChecked(position, m_depth, plan_element_key);
 
-                saveBinaryMap2(plan_element_key, m_irradiance_maps[i * num_steps + j]);
+                if (m_parameters.computation.store_maps) saveBinaryMap2(plan_element_key, m_irradiance_maps[i * num_steps + j]);
+                else saveBinaryMap2(plan_element_key, irradiance_map);
+                
             }
 
             deleteBreakPoint(i);
         }
 
 
-
-        for (const auto& map : m_irradiance_maps)      
+        if (m_parameters.computation.store_maps)
         {
-            for (const auto& element : map)
+            for (const auto& map : m_irradiance_maps)      
             {
-                if (element.second > 0)
+                for (const auto& element : map)
                 {
-                    m_verification_elements.insert(element.first);
+                    if (element.second > 0)
+                    {
+                        m_verification_elements.insert(element.first);
+                    }
                 }
             }
-        } 
+        }
+        else
+        {
+            for (int i = 0; i < m_grid_elements.size(); ++i)
+            {
+                for (int j = 0; j < num_steps; ++j)
+                {
+                    point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+                    position.z() = m_parameters.lamp.center + j * m_parameters.lamp.step_size;
+                    OcTreeKey plan_element_key;
+                    m_extended_model->coordToKeyChecked(position, m_depth, plan_element_key);
+
+                    ExposureMap irradiance_map = loadBinaryMap2(plan_element_key);
+
+                    for (const auto& element : irradiance_map)
+                    {
+                        if (element.second > 0)
+                        {
+                            m_verification_elements.insert(element.first);
+                        }
+                    }
+                }
+            }
+        }
 
         std::cout << "Verification elements: " << m_verification_elements.size() << std::endl;
     }
+
+
+
+
+    void DoseCalculator::computeIrradianceMaps4()
+    {
+        std::cout << "Opt: " << m_optimization_elements.size() << "\n";
+
+        computeGeneralVisibility();
+        create2DModel();
+
+        m_break_points_x.resize(m_grid_elements.size());
+        m_break_points_y.resize(m_grid_elements.size());
+        m_break_points_z.resize(m_grid_elements.size());
+        m_break_points_xn.resize(m_grid_elements.size());
+        m_break_points_yn.resize(m_grid_elements.size());
+        m_break_points_zn.resize(m_grid_elements.size());
+
+        int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
+        if (m_parameters.computation.store_maps) m_irradiance_maps_2.resize(m_grid_elements.size() * num_steps);
+
+        // Extending ray targets
+        int step_count = m_parameters.lamp.step_size / m_parameters.preprocessing.resolution;
+        int segment_steps = (m_parameters.lamp.upper_z - m_parameters.lamp.lower_z) * step_count; 
+
+        std::vector<double> segments;
+        for (int i = 0; i < m_ray_targets.size(); ++i) segments.push_back(m_ray_targets[i]);
+        for (int i = 0; i < segment_steps; ++i) segments.push_back(m_ray_targets[m_ray_targets.size() - 1] + (i+1) * m_parameters.preprocessing.resolution);
+
+
+        #pragma omp parallel for
+        for (int i = 0; i < m_grid_elements.size(); ++i)
+        {
+            computeBreakPoint(i);
+
+            // Compute irradiance maps for all lamp segments
+            std::vector<AccumMap> segment_maps(segments.size());
+
+            for (int j = 1; j < segments.size() - 1; ++j)
+            {
+                point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+                position.z() = segments[j];
+
+                for (const auto& element : m_base_reachable_elements)
+                {
+                    VoxelID vid = packKey(element);
+                    segment_maps[j][vid] = computeIrradianceType6(position, element, i);
+                }
+            }
+
+            // Aggregate maps for different z steps
+            for (int j = 0; j < num_steps; ++j)
+            {
+                AccumMap irradiance_accum;
+
+                point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+                position.z() = m_parameters.lamp.center + j * m_parameters.lamp.step_size;
+
+                for (int k = 1; k < m_ray_targets.size() - 1; ++k)
+                {
+                    for (const auto& [voxel, value] : segment_maps[j * step_count + k])
+                    {
+                        irradiance_accum[voxel] += value; 
+                    }
+                }    
+
+                IrradianceMap flat_map;
+                flat_map.reserve(irradiance_accum.size());
+
+                for (const auto& [voxel, value] : irradiance_accum)
+                {
+                    if (value > 0.0f) flat_map.push_back( { voxel, value });    
+                }
+
+                m_irradiance_maps_2[i * num_steps + j] = std::move(flat_map);
+
+                OcTreeKey plan_element_key;
+                m_extended_model->coordToKeyChecked(position, m_depth, plan_element_key);
+
+                saveBinaryMap3(plan_element_key, m_irradiance_maps_2[i * num_steps + j]);
+            }
+
+            deleteBreakPoint(i);
+        }
+
+
+        for (const auto& map : m_irradiance_maps_2)      
+        {
+            for (const auto& entry : map)
+            {
+                if (entry.value > 0) m_verification_elements_2.insert(entry.voxel);
+            }
+        }
+
+        std::cout << "Opt: " << m_optimization_elements.size() << "\n";
+        std::cout << "Verification elements: " << m_verification_elements_2.size() << std::endl;
+    }
+
 
 
 
@@ -752,6 +896,7 @@ namespace rpo
 
 
 
+
     void DoseCalculator::loadIrradianceMaps2()
     {
         int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
@@ -784,6 +929,50 @@ namespace rpo
 
         std::cout << "Verification elements: " << m_verification_elements.size() << std::endl;
     }
+
+
+
+
+    void DoseCalculator::loadIrradianceMaps3()
+    {
+        int num_steps = m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
+        m_irradiance_maps_2.resize(m_grid_elements.size() * num_steps);
+
+        #pragma omp parallel for collapse(2)
+        for (int i = 0; i < m_grid_elements.size(); ++i)
+        {
+            for (int j = m_parameters.lamp.lower_z; j <= m_parameters.lamp.upper_z; ++j)
+            {
+                point3d position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+                position.z() = m_parameters.lamp.center + j * m_parameters.lamp.step_size;
+
+                OcTreeKey plan_element_key = m_extended_model->coordToKey(position, m_depth);
+
+                m_irradiance_maps_2[i * num_steps + j] = loadBinaryMap3(plan_element_key);
+            }
+        }
+
+        for (const auto& map : m_irradiance_maps_2)
+        {
+            for (const auto& entry : map)
+            {
+                if (entry.value > 0.0f)
+                {
+                    m_verification_elements_2.insert(entry.voxel);
+                }
+            }
+        }
+
+        std::cout << "Verification elements: " << m_verification_elements_2.size() << std::endl;
+    }
+
+
+
+    
+
+
+
+
 
 
 
@@ -871,6 +1060,35 @@ namespace rpo
             std::cerr << "Could not open output file for saving irradiance map!" << std::endl;
         }
     }   
+
+
+
+    void DoseCalculator::saveBinaryMap3(const OcTreeKey& plan_element_key, const IrradianceMap& irradiance_map)
+    {
+        const std::string output_file = m_parameters.paths.irradiance_maps + 
+            std::to_string(plan_element_key[0]) + "_" + std::to_string(plan_element_key[1]) + "_" +
+            std::to_string(plan_element_key[2]) + ".bin";
+
+        std::ofstream file(output_file, std::ios::binary);
+
+        if (!file.is_open())
+        {
+            std::cerr << "Could not open output file for saving irradiance map!" << std::endl;
+            return;
+        }
+
+
+        for (const auto& entry : irradiance_map)
+        {
+            if (entry.value > 0.0f)
+            {
+                file.write(reinterpret_cast<const char*>(&entry.voxel), sizeof(entry.voxel));
+                file.write(reinterpret_cast<const char*>(&entry.value), sizeof(entry.value));
+            }
+        }
+
+        file.close();
+    }
 
 
 
@@ -978,9 +1196,44 @@ namespace rpo
         }
         else
         {
-            std::cerr << "Could not open input file for loading irradiance map!" << std::endl;
+            std::cerr << "Could not open input file for loading irradiance map! " << plan_element_key[0] << " " 
+                      << plan_element_key[1] << " " << plan_element_key[2] << std::endl;
         }
 
+        return irradiance_map;
+    }
+
+
+
+
+    IrradianceMap DoseCalculator::loadBinaryMap3(const OcTreeKey& plan_element_key) const
+    {
+        IrradianceMap irradiance_map;
+
+        const std::string input_file = m_parameters.paths.irradiance_maps + 
+            std::to_string(plan_element_key[0]) + "_" + std::to_string(plan_element_key[1]) + "_" +
+            std::to_string(plan_element_key[2]) + ".bin";
+
+        std::ifstream file(input_file, std::ios::binary);
+
+        if (!file.is_open())
+        {
+            std::cerr << "Could not open input file for loading irradiance map! " << plan_element_key[0] << " " 
+                      << plan_element_key[1] << " " << plan_element_key[2] << std::endl;
+            return irradiance_map;
+        }    
+
+        VoxelID voxel;
+        float value;
+
+        while (file.read(reinterpret_cast<char*>(&voxel), sizeof(voxel)))
+        {
+            file.read(reinterpret_cast<char*>(&value), sizeof(value));
+            irradiance_map.push_back({ voxel, value });
+        }
+           
+
+        file.close();
         return irradiance_map;
     }
 
@@ -1037,6 +1290,36 @@ namespace rpo
         std::cout << "Number of elements for optimization: " << m_optimization_elements.size() << std::endl;
         std::cout << "Number of elements for verification: " << m_verification_elements.size() << std::endl;
     }
+
+
+
+    void DoseCalculator::setOptimizationElements2()
+    {
+        std::cout << "Number of elements for optimization: " << m_optimization_elements.size() << std::endl;
+        std::cout << "Number of elements for verification: " << m_verification_elements_2.size() << std::endl;
+
+        for (const uint64_t& voxel : m_verification_elements_2)
+        {
+            OcTreeKey key = unpackKey(voxel);
+
+            m_optimization_elements.insert(key);
+
+            // TODO: extension for object computation
+            ExtendedOcTreeNode* extended_node = m_extended_model->search(key);
+
+            if (extended_node != nullptr && extended_node->getType() == 5)
+            {
+                m_object_elements.insert(key);
+            }
+
+        }
+
+        std::cout << "Number of object elements: " << m_object_elements.size() << std::endl;
+        std::cout << "Number of elements for optimization: " << m_optimization_elements.size() << std::endl;
+        std::cout << "Number of elements for verification: " << m_verification_elements_2.size() << std::endl;
+    }
+
+
 
 
 
@@ -1532,6 +1815,8 @@ namespace rpo
                 }
             }
 
+            int gx = grid_index;
+
             if (m_parameters.computation.type == 12)
             {
                 grid_index *= m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
@@ -1544,7 +1829,17 @@ namespace rpo
             }
             else
             {
-                dose_map = loadBinaryMap(m_grid_elements[grid_index]);
+                if (m_parameters.computation.type == 12) 
+                {
+                    point3d position = m_extended_model->keyToCoord(m_grid_elements[gx], m_depth);
+                    position.z() = m_parameters.lamp.center + z_step * m_parameters.lamp.step_size;
+                    OcTreeKey plan_element_key = m_extended_model->coordToKey(position, m_depth);
+                    dose_map = loadBinaryMap2(plan_element_key);
+                }
+                else 
+                {   
+                    dose_map = loadBinaryMap(m_grid_elements[grid_index]);
+                }
             }
             
         }
@@ -2428,6 +2723,136 @@ namespace rpo
 
         return false;
     }
+
+
+
+
+    void DoseCalculator::compute2(std::vector<RadiationPlan>& radiation_plans, IndexVector& index_vector)
+    {
+        signal (SIGINT, handler);
+
+        m_parameters.optimization.num_positions = radiation_plans[0].first.size() / m_parameters.optimization.element_size;
+
+        #pragma omp parallel for
+        for (int i = 0; i < index_vector.size(); ++i)
+        {
+            radiation_plans[index_vector[i]].second = computeCoverageForPlan2(radiation_plans[index_vector[i]]);
+        }
+
+        index_vector.erase(index_vector.begin(), index_vector.end());
+    }
+
+
+    double DoseCalculator::computeCoverageForPlan2(RadiationPlan& radiation_plan)
+    {
+        signal (SIGINT, handler);
+
+        const int element_size = m_parameters.optimization.element_size;
+        std::vector<double> elements = radiation_plan.first;
+
+        // std::vector<ExposureMap> exposure_maps(m_parameters.optimization.num_positions);
+        AccumMap total_exposure;
+
+        for (int i = 0; i < elements.size(); i += element_size)
+        {
+            point3d lamp_position(elements[i], elements[i + 1], m_ground_level);
+            OcTreeKey key; 
+            m_extended_model->coordToKeyChecked(lamp_position, m_depth, key);
+
+            if (m_ground_zone_elements.find(key) != m_ground_zone_elements.end())
+            {
+                lamp_position.z() = m_parameters.lamp.center;
+                lamp_position.z() += elements[i + 3] * m_parameters.lamp.step_size;
+
+                PlanElement plan_element { lamp_position, elements[i + 2] };
+
+                // exposure_maps[i / element_size] = computeDoseForPlanElement2(plan_element, false, elements[i + 3]);
+
+                AccumMap lamp_dose = computeDoseForPlanElement2(plan_element, false, elements[i + 3]);
+
+                for (const auto& [voxel, value] : lamp_dose)
+                {
+                    total_exposure[voxel] += value;
+                }
+            }
+            else
+            {  
+                for (ExtendedOcTree::leaf_iterator it = m_extended_model->begin_leafs(), end = m_extended_model->end_leafs(); it != end; ++it)
+                {
+                    uint64_t voxel = packKey(it.getKey());
+                    total_exposure[voxel] = 0.0f;
+                }
+            }
+        }
+
+        int general_over = 0, object_over = 0, object_sum = m_object_elements.size();
+
+        for (auto& element : m_optimization_elements)
+        {
+            uint64_t voxel = packKey(element);
+            float dose = total_exposure.count(voxel) ? total_exposure[voxel] : 0.0f;
+
+            if (std::isnan(dose)) dose = 0.0f;
+
+            if (dose >= m_parameters.computation.exposure_limit) ++general_over;
+
+            NodePtr node = m_extended_model->search(element, m_depth);
+
+            if (node != nullptr && node->getType() == 5)
+            {
+                if (dose >= m_parameters.computation.exposure_limit) ++object_over;
+            }
+        }
+
+        double fitness = m_parameters.computation.semantic ? 
+            static_cast<double>(object_over)  / static_cast<double>(object_sum) : 
+            static_cast<double>(general_over) / static_cast<double>(m_optimization_elements.size());
+
+        return fitness;
+    }
+
+
+
+
+    AccumMap DoseCalculator::computeDoseForPlanElement2(const PlanElement& plan_element, bool verify, int z_step)
+    {
+        signal (SIGINT, handler);
+
+        AccumMap dose_accum;
+        IrradianceMap irradiance_map;
+
+        double min_distance = std::numeric_limits<double>::max();
+        int grid_index = -1;
+
+        for (int i = 0; i < m_grid_elements.size(); ++i)
+        {
+            point3d grid_position = m_extended_model->keyToCoord(m_grid_elements[i], m_depth);
+
+            grid_position.z() = plan_element.first.z(); // m_parameters.lamp.center; 
+
+            const double distance = (grid_position - plan_element.first).norm();
+
+            if (distance < min_distance)
+            {
+                min_distance = distance;
+                grid_index = i;
+            }
+        }
+
+        grid_index *= m_parameters.lamp.upper_z - m_parameters.lamp.lower_z + 1;
+        grid_index += z_step;
+
+        irradiance_map = m_irradiance_maps_2[grid_index];
+
+        for (const auto& entry : irradiance_map)
+        {
+            dose_accum[entry.voxel] += entry.value * plan_element.second;
+        }
+
+        return dose_accum;
+    }
+
+
 }
 
 

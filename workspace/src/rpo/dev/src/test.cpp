@@ -4,72 +4,32 @@
 #include "ros_visualizer.h"
 #include "plan_generator.h"
 
+
+
 int main (int argc, char** argv)
 {
     auto start_overall = std::chrono::high_resolution_clock::now();
 
-    // Read input parameters -------------------------------------------------------
-    if (argc < 2)
-    {
-        std::cerr << "Usage: rosrun rpo Vertical <parameter_file>" << std::endl;
-        return -1;
-    }
-
     const std::string parameters_file = argv[1];
     rpo::Parameters parameters = rpo::Parameters::loadParameters(parameters_file);
-    
-    // Special computing method
-    bool segmentwise = (parameters.computation.type == 14) ? true : false;
-    if (segmentwise) parameters.computation.type = 12;
 
     std::filesystem::create_directory(parameters.paths.irradiance_maps);
 
-
-    // Read 3D models --------------------------------------------------------------                                                                                  
     std::shared_ptr<ColorOcTree> color_model = nullptr;
     std::shared_ptr<rpo::ExtendedOcTree> extended_model = nullptr;
 
     std::ifstream file(parameters.paths.color_model);
-
-    if (file.is_open())
-    {
-        color_model.reset(dynamic_cast<ColorOcTree*>(AbstractOcTree::read(file)));
-        std::cout << "Color octree num leaf nodes: " << color_model->getNumLeafNodes() << std::endl;
-        file.close();
-    }
-    else
-    {
-        std::cerr << "Could not open color octree file!" << std::endl;
-        return -1;
-    }
+    color_model.reset(dynamic_cast<ColorOcTree*>(AbstractOcTree::read(file)));
+    file.close();
 
     file.open(parameters.paths.extended_model);
+    extended_model.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file)));
+    file.close();
 
-    if (file.is_open())
-    {
-        extended_model.reset(dynamic_cast<rpo::ExtendedOcTree*>(AbstractOcTree::read(file)));
-        std::cout << "Extended octree num leaf nodes: " << extended_model->getNumLeafNodes() << std::endl;
-        file.close();
-    }        
-    else
-    {
-        std::cerr << "Could not open extended octree file!" << std::endl;
-        return -1;
-    }
-
-
-    assert(color_model->getNumLeafNodes() < 1'000);
-    assert(autmented_model->getNumLeafNodes() < 1'000);
-
-
-
-    // Visualizer initialization ---------------------------------------------------
     ros::init(argc, argv, "vertical");
     rpo::ROSVisualizer visualizer(extended_model, color_model, parameters);
-    
-    
 
-    // Preprocessing ---------------------------------------------------------------
+
     visualizer.cutUnderGround();
     visualizer.computeGroundZone();
     visualizer.computeGridElements();
@@ -77,46 +37,38 @@ int main (int argc, char** argv)
 
     auto precomp_time = std::chrono::seconds::zero();
 
-
-    // Cut random elements on lab model
     if (argc == 3) visualizer.filter();
 
-
-    // Precomputation
     if (!parameters.computation.load_maps)
     {
         auto start_precomputation = std::chrono::high_resolution_clock::now();
-        if (segmentwise) visualizer.computeIrradianceMaps3();
-        else visualizer.computeIrradianceMaps2();
+        visualizer.computeIrradianceMaps4();
         auto stop_precomputation = std::chrono::high_resolution_clock::now();
         precomp_time = std::chrono::duration_cast<std::chrono::seconds>(stop_precomputation - start_precomputation);
         std::cout << "Precomputation time: " << precomp_time.count() << std::endl;
     }
     else
     {
-        visualizer.loadIrradianceMaps2();
+        visualizer.loadIrradianceMaps3();
     }
-    
 
 
-    // Set optimization elements ---------------------------------------------------
-    visualizer.setOptimizationElements();
+
+    visualizer.setOptimizationElements2();
     visualizer.showOptimizationElements();
 
 
-    // Initialize plan generator ---------------------------------------------------
+    return 0;
+
     rpo::PlanGenerator generator(visualizer.getParameters());
 
     generator.setModelBoundaries(extended_model->getBoundaries());
     generator.setGroundZone(visualizer.getGroundZone());
 
     visualizer.showElementTypes();
-    
-    std::cout << "Elements shown!" << std::endl;
 
 
-
-    // Iterative optimization ------------------------------------------------------
+        // Iterative optimization ------------------------------------------------------
     rpo::RadiationPlan previous_best_plan;
     rpo::RadiationPlan best_plan;
 
@@ -128,7 +80,7 @@ int main (int argc, char** argv)
 
         for (unsigned int i = 0; i < parameters.optimization.max_generations; ++i)
         {
-            visualizer.compute(generator.getPopulation(), generator.getIndexOfUnevaluated());
+            visualizer.compute2(generator.getPopulation(), generator.getIndexOfUnevaluated());
 
             generator.selectSurvivals();
 
@@ -136,12 +88,12 @@ int main (int argc, char** argv)
 
             generator.recombine();
 
-            visualizer.compute(generator.getPopulation(), generator.getIndexOfUnevaluated());
+            visualizer.compute2(generator.getPopulation(), generator.getIndexOfUnevaluated());
 
             generator.mutate();
         }
 
-        visualizer.compute(generator.getPopulation(), generator.getIndexOfUnevaluated());
+        visualizer.compute2(generator.getPopulation(), generator.getIndexOfUnevaluated());
 
         best_plan = generator.getBestPlan();
 
@@ -255,7 +207,7 @@ int main (int argc, char** argv)
 
     if (!parameters.optimization.verify && !parameters.computation.semantic)
     {
-        rpo::Score score = visualizer.showResult2(visualizer.getGrid(best_plan));
+        rpo::Score score = visualizer.showResult3(visualizer.getGrid(best_plan));
 
         verified_coverage = score.general_coverage;
     }
@@ -283,5 +235,10 @@ int main (int argc, char** argv)
     std::cout << "Precomputation time: "       << precomp_time.count()      << std::endl;
     std::cout << "Overall duration: "          << duration_overall.count()  << "\n\n\n";
 
+
+
+
     return 0;
 }
+
+

@@ -232,3 +232,21 @@ target_link_libraries(PathPlanning
 add_executable(EXP dev/src/experiment.cpp) 
 
 
+
+# Map format test
+add_executable(TEST
+  dev/src/test.cpp
+  src/plan_generator.cpp
+  src/ros_visualizer.cpp
+  src/dose_calculator.cpp
+  src/extended_octree.cpp
+  src/parameters.cpp
+)
+
+target_link_libraries(TEST
+  ${catkin_LIBRARIES}
+  OpenMP::OpenMP_CXX
+  yaml-cpp
+)
+
+

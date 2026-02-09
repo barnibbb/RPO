@@ -257,7 +257,7 @@ namespace rpo
             {
                 if (m_optimization_elements.find(it.getKey()) != m_optimization_elements.end())
                 {
-                    // node->setColor(255, 255, 255);
+                    node->setColor(255, 255, 255);
                 }
                 else
                 {
@@ -394,6 +394,64 @@ namespace rpo
     }
 
 
+
+    void ROSVisualizer::showCoverage2(const AccumMap& dose_map, bool binary, bool grid)
+    {
+        for (ColorOcTree::leaf_iterator it = m_color_model->begin_leafs(), end = m_color_model->end_leafs(); it != end; ++it)
+        {
+            const OcTreeKey key = it.getKey();
+
+            if (m_placed_lamps.find(key) != m_placed_lamps.end()) continue;
+
+
+            if (ColorOcTreeNode* node = m_color_model->search(key, m_depth); node != nullptr)
+            {
+                const uint64_t voxel = packKey(key);
+
+                auto it_dose = dose_map.find(voxel);
+
+                if (it_dose != dose_map.end())
+                {
+                    const double exposure = it_dose->second;
+
+                    if (exposure >= m_parameters.computation.exposure_limit)
+                    {
+                        node->setColor(static_cast<int>(255 * R[255]), static_cast<int>(255 * G[255]), static_cast<int>(255 * B[255]));
+                        // node->setColor(255, 255, 0);
+                        // node->setColor(0, 255, 255);
+                    }
+                    else
+                    {
+                        if (binary)
+                        {
+                            node->setColor(static_cast<int>(255 * R[0]), static_cast<int>(255 * G[0]), static_cast<int>(255 * B[0]));
+                        }
+                        else
+                        {
+                            const int scale = static_cast<int>(round(255 * exposure / m_parameters.computation.exposure_limit));
+
+                            node->setColor(static_cast<int>(255 * R[scale]), static_cast<int>(255 * G[scale]), static_cast<int>(255 * B[scale]));
+
+                            // node->setColor(scale, scale, 0);
+                            // node->setColor(0, scale, scale);
+                        }
+                    }
+            
+                }
+                else
+                {
+                    node->setColor(0, 0, 0);
+                }
+            }
+        }
+
+        publish();
+    }
+
+
+
+
+
     // TODO for later: showResult is not yet adjusted for vertical shift
     Score ROSVisualizer::showResult(const RadiationPlan& radiation_plan, bool verify)
     {
@@ -408,7 +466,7 @@ namespace rpo
 
         std::vector<double> elements = radiation_plan.first;
 
-        std::vector<ExposureMap> exposure_maps(radiation_plan.first.size() / 3);
+        std::vector<ExposureMap> exposure_maps(radiation_plan.first.size() / element_size);
 
         const double z = m_parameters.lamp.center;
 
@@ -497,6 +555,158 @@ namespace rpo
     
         return score;
     }
+
+
+
+    Score ROSVisualizer::showResult2(const RadiationPlan& radiation_plan)
+    {
+        const int element_size = m_parameters.optimization.element_size;
+        const double z = m_parameters.lamp.center;
+
+        std::vector<double> elements = radiation_plan.first; 
+        std::vector<ExposureMap> exposure_maps(radiation_plan.first.size() / element_size);
+    
+        #pragma omp parallel for
+        for (int i = 0; i < elements.size(); i += element_size)
+        {   
+            point3d lamp_position(elements[i], elements[i + 1], z + elements[i + 3] * m_parameters.lamp.step_size);
+
+            PlanElement plan_element { lamp_position, elements[i + 2] };
+
+            exposure_maps[i / element_size] = computeDoseForPlanElement(plan_element, false, elements[i + 3]);
+        }
+
+        for (int i = 0; i < elements.size(); i += element_size)
+        {
+            placeLamp(elements[i], elements[i + 1]);
+        }
+
+        int general_over = 0, object_over = 0, object_sum = m_object_elements.size();
+
+        rpo::ExposureMap exposure_map;
+
+        for (auto& element : m_optimization_elements)
+        {
+            exposure_map[element] = 0;
+
+            for (int i = 0; i < exposure_maps.size(); ++i)
+            {
+                exposure_map[element] += exposure_maps[i][element];
+            }
+
+
+            if (std::isnan(exposure_map[element]))
+            {
+                exposure_map[element] = 0;
+            }
+
+
+            if (exposure_map[element] >= m_parameters.computation.exposure_limit)
+            {
+                general_over += 1;
+            }
+
+            NodePtr node = m_extended_model->search(element, m_depth);
+
+            if (node != nullptr && node->getType() == 5)
+            {
+                if (m_optimization_elements.find(element) != m_optimization_elements.end())
+                {
+                    if (exposure_map[element] >= m_parameters.computation.exposure_limit)
+                    {
+                        object_over += 1;
+                    }
+                }
+            }
+        }
+
+        Score score;
+
+        score.general_coverage = static_cast<double>(general_over) / static_cast<double>(m_optimization_elements.size());
+        score.object_coverage  = static_cast<double>(object_over)  / static_cast<double>(object_sum);
+
+        showCoverage(exposure_map, false, true);
+
+        for (int i = 0; i < elements.size(); i += element_size)
+        {
+            placeLamp(elements[i], elements[i + 1]);
+        }
+
+        publish();
+        deleteLamps();
+    
+        return score;
+    }
+
+
+
+
+
+    Score ROSVisualizer::showResult3(const RadiationPlan& radiation_plan)
+    {
+        const int element_size = m_parameters.optimization.element_size;
+        const double z = m_parameters.lamp.center;
+
+        std::vector<double> elements = radiation_plan.first; 
+        AccumMap total_exposure;
+    
+        #pragma omp parallel for
+        for (int i = 0; i < elements.size(); i += element_size)
+        {   
+            point3d lamp_position(elements[i], elements[i + 1], z + elements[i + 3] * m_parameters.lamp.step_size);
+
+            PlanElement plan_element { lamp_position, elements[i + 2] };
+
+            AccumMap lamp_dose = computeDoseForPlanElement2(plan_element, false, elements[i + 3]);
+
+            for (const auto& [voxel, value] : lamp_dose)
+            {
+                total_exposure[voxel] += value;
+            }
+        }
+
+        for (int i = 0; i < elements.size(); i += element_size)
+        {
+            placeLamp(elements[i], elements[i + 1]);
+        }
+
+        int general_over = 0, object_over = 0, object_sum = m_object_elements.size();
+
+        for (auto& element : m_optimization_elements)
+        {
+            uint64_t voxel = packKey(element);
+            float dose = total_exposure.count(voxel) ? total_exposure[voxel] : 0.0f;
+
+            if (std::isnan(dose)) dose = 0.0f;
+
+            if (dose >= m_parameters.computation.exposure_limit) ++general_over;
+
+            NodePtr node = m_extended_model->search(element, m_depth);
+
+            if (node != nullptr && node->getType() == 5)
+            {
+                if (dose >= m_parameters.computation.exposure_limit) ++object_over;
+            }
+        }
+
+        Score score;
+
+        score.general_coverage = static_cast<double>(general_over) / static_cast<double>(m_optimization_elements.size());
+        score.object_coverage  = static_cast<double>(object_over)  / static_cast<double>(object_sum);
+
+        showCoverage2(total_exposure, false, true);
+
+        for (int i = 0; i < elements.size(); i += element_size)
+        {
+            placeLamp(elements[i], elements[i + 1]);
+        }
+
+        publish();
+        deleteLamps();
+    
+        return score;
+    }
+
 
 
 

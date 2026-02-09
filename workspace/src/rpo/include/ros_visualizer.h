@@ -54,7 +54,10 @@ namespace rpo
         void showOptimizationElements();
         void showElementTypes();
         void showCoverage(ExposureMap& dose_map, bool binary, bool grid = false);
+        void showCoverage2(const AccumMap& dose_map, bool binary, bool grid = false);
         Score showResult(const RadiationPlan& radiation_plan, bool verify);
+        Score showResult2(const RadiationPlan& radiation_plan);
+        Score showResult3(const RadiationPlan& radiation_plan);
 
         void publish();
 

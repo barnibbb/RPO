@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <set>
 #include <vector>
@@ -17,6 +18,12 @@ namespace rpo
     using BreakPoints = std::unordered_map<OcTreeKey, std::vector<OcTreeKey>, OcTreeKey::KeyHash>;
 
     struct Score { double general_coverage, object_coverage; };
+
+    // New structure
+    using VoxelID = uint64_t;
+    struct IrradianceEntry { VoxelID voxel; float value; };
+    using IrradianceMap = std::vector<IrradianceEntry>;
+    using AccumMap = std::unordered_map<VoxelID, float>;
 
     class DoseCalculator
     {
@@ -39,17 +46,22 @@ namespace rpo
         void computeIrradianceMaps();
         void computeIrradianceMaps2();
         void computeIrradianceMaps3();
+        void computeIrradianceMaps4();
         void loadIrradianceMaps();
         void loadIrradianceMaps2();
+        void loadIrradianceMaps3();
         void saveIrradianceMap(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
         void saveBinaryMap(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
         void saveBinaryMap2(const OcTreeKey& plan_element_key, const ExposureMap& irradiance_map);
+        void saveBinaryMap3(const OcTreeKey& plan_element_key, const IrradianceMap& irradiance_map);
         ExposureMap loadIrradianceMap(const OcTreeKey& plan_element_key) const;
         ExposureMap loadBinaryMap(const OcTreeKey& plan_element_key) const;
         ExposureMap loadBinaryMap2(const OcTreeKey& plan_element_key) const;
+        IrradianceMap loadBinaryMap3(const OcTreeKey& plan_element_key) const;
 
         // Optimization elements
         void setOptimizationElements();
+        void setOptimizationElements2();
         void create2DModel();
         void compute2DNormalVectors();
         void compute2DNormalVectors2();
@@ -86,6 +98,27 @@ namespace rpo
         bool compute3DVisibility2(const point3d& lamp_position, const point3d& element, int index);
 
 
+        // New structure
+        inline uint64_t packKey(const OcTreeKey& key)
+        {
+            return (uint64_t(key[2]) << 32) | (uint64_t(key[1]) << 16) | uint64_t(key[0]);
+        }
+
+
+
+        inline OcTreeKey unpackKey(uint64_t voxel)
+        {
+            OcTreeKey key;
+            key[0] = static_cast<uint16_t>(voxel & 0xFFFF);
+            key[1] = static_cast<uint16_t>((voxel >> 16) & 0xFFFF);
+            key[2] = static_cast<uint16_t>((voxel >> 32) & 0xFFFF);
+            return key;
+        }
+
+        void compute2(std::vector<RadiationPlan>& radiation_plans, IndexVector& index_vector);
+        double computeCoverageForPlan2(RadiationPlan& radiation_plan);
+        AccumMap computeDoseForPlanElement2(const PlanElement& plan_element, bool verify, int z_step = 0);
+
     protected:
         Parameters m_parameters;
         
@@ -108,6 +141,11 @@ namespace rpo
         std::vector<double> m_ray_targets;
 
         std::vector<ExposureMap> m_irradiance_maps;
+
+        // New structure
+        std::vector<IrradianceMap> m_irradiance_maps_2;
+        std::unordered_set<VoxelID> m_verification_elements_2;
+
 
         std::vector<BreakPoints> m_break_points_x, m_break_points_y, m_break_points_z;
         std::vector<BreakPoints> m_break_points_xn, m_break_points_yn, m_break_points_zn;
